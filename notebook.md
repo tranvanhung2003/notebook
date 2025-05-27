@@ -6,11 +6,6 @@
 
 # 1. Tài khoản SuperGrok
 
-| Email                     | Password                  |
-| ------------------------- | ------------------------- |
-| `adams722@outlook.com`    | `supergrok123456`         |
-| `zuelapajtak@hotmail.com` | `muaxongketban0325555414` |
-
 # 2. Long term goals
 
 - Các nguyên lý trong lập trình

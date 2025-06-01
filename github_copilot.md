@@ -19,3 +19,23 @@
 `#codebase`<br>
 `#selection`<br>
 `#new`<br>
+
+## setting.json
+
+```json
+"github.copilot.nextEditSuggestions.enabled": true,
+"github.copilot.chat.codesearch.enabled": true,
+"github.copilot.enable": {
+  "*": true,
+  "plaintext": false,
+  "markdown": false,
+  "scminput": false
+},
+```
+
+## Commands
+
+- GitHub Copilot: Toggle (Enable/Disable) Completions
+- Chat: Clear All Workspace Chats
+- GitHub Copilot: Build Local Workspace Index
+- GitHub Copilot: Build Remote Workspace Index

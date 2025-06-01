@@ -13,3 +13,9 @@
 | `Alt + \`                | mở gợi ý code                         |
 | `Ctrl + /`               | thêm context                          |
 | `Shift + Alt + T`        | chuyển văn bản đã chọn sang tiếng Anh |
+
+## Chat variables
+
+`#codebase`<br>
+`#selection`<br>
+`#new`<br>

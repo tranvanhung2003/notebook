@@ -10,7 +10,8 @@
 | `Ctrl + RightArrow`      | chấp nhận từng chữ gợi ý              |
 | `Ctrl + LeftArrow`       | chấp nhận từng dòng gợi ý             |
 | `Alt + ], Alt + [`       | hiển thị các tiếp theo và trước đó    |
-| `Alt + \`                | mở gợi ý code                         |
+| `Alt + \`                | mở gợi ý code Inline                  |
+| `Ctrl + Alt + \`         | mở gợi ý code Next Edit Suggestion    |
 | `Ctrl + /`               | thêm context                          |
 | `Ctrl + .`               | chuyển đổi giữa các Chat Mode         |
 | `Shift + Alt + T`        | chuyển văn bản đã chọn sang tiếng Anh |

@@ -23,5 +23,6 @@
 - RESTful API
 - Template Engine
 - Boilerplate Code
+- Model Context Protocol
 
 # 3. Short term goals

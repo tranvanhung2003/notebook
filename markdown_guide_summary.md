@@ -116,7 +116,7 @@ And the next line.
 
 At the command prompt, type `nano`.
 
-`` Use `code` in your Markdown file. ``
+``Use `code` in your Markdown file.``
 
 # 8. Code Blocks
 

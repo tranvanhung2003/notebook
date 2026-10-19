@@ -1,492 +1,608 @@
-# Day 1 — Module Lý thuyết: Infrastructure Operations & Linux Administration Foundations
+# Day 1 — Module Lý thuyết
 
-Theo syllabus, phần `Concept/Lecture` của Day 1 gồm hai khối kiến thức lớn. Khối thứ nhất xây dựng **enterprise Infrastructure Operations mindset**: roles and responsibilities, L1/L2 boundaries, operational safety, production/non-production separation, change authorization, least privilege, SOP, runbook, incident escalation, access management, configuration baseline, asset inventory, audit evidence và lab readiness. Khối thứ hai xây dựng **Linux administration foundation**: Linux architecture, kernel, shell, distributions/RHEL, filesystem hierarchy, CLI, paths, file operations, command syntax, pipes/redirection/history/help, safe execution, users/groups, ownership/permissions, `chmod/chown/chgrp`, `umask`, `sudo`, SSH authentication, SSH keys và secure administrative access. Infrastructure_Operations_14_Da…
+## Infrastructure Operations Foundation + Linux Administration Foundation
 
-Phần dưới đây giữ nguyên phạm vi đó. Những phần tôi mở rộng để giúp bạn hiểu cơ chế sâu hơn sẽ được đánh dấu **Kiến thức bổ sung**; chúng hỗ trợ syllabus chứ không thay đổi phạm vi Day 1. Day 2 mới đi sâu vào `dnf/yum/rpm`, processes, `systemd`, SELinux, `firewalld`, networking, storage, logging, Bash scripting, backup và operational troubleshooting chuyên sâu. Infrastructure_Operations_14_Da…
+Day 1 là nền móng cho gần như toàn bộ 13 ngày còn lại. Syllabus yêu cầu hai nhóm kiến thức lớn: **enterprise Infrastructure Operations fundamentals** và **Linux administration fundamentals**, từ operational safety, L1/L2 boundaries, least privilege, change control, evidence cho đến Linux architecture, filesystem, CLI, users/groups, permissions, `sudo` và `SSH`. Infrastructure_Operations_14_Da…
+
+Một điểm cần phân biệt ngay từ đầu:
+
+- Những mục được đánh dấu **Theo syllabus** là nội dung bắt buộc của Day 1.
+- Những phần giải thích sâu hơn về workflow enterprise, troubleshooting methodology, security model, command behavior… là **Kiến thức bổ sung** nhằm giúp bạn vận hành thực tế. Syllabus liệt kê phạm vi nhưng không quy định chi tiết procedure cụ thể của từng công ty.
+- Với L1/L2 boundary, approval flow, naming convention, `sudo` policy, SSH hardening… **organization runbook/policy luôn có quyền ưu tiên**. Không nên coi các ví dụ tổng quát dưới đây là authorization cho production.
+
+---
+
+# 1. Day 1 — Mục tiêu của Module Lý thuyết
+
+Sau Module Lý thuyết, bạn phải có khả năng nhìn một Linux administrative task không chỉ theo kiểu:
+
+```text
+"Command nào để làm việc này?"
+```
+
+mà theo kiểu:
+
+```text
+1. Tôi đang làm trên system nào?
+2. Environment là production hay non-production?
+3. Tôi có authorization hay không?
+4. Current state là gì?
+5. Desired state là gì?
+6. Operation có impact gì?
+7. Quyền tối thiểu cần thiết là gì?
+8. Command nào an toàn nhất?
+9. Làm sao verify?
+10. Nếu fail thì troubleshoot theo thứ tự nào?
+11. Nếu gây lỗi thì rollback thế nào?
+12. Evidence nào cần lưu?
+13. Khi nào phải stop và escalate?
+```
+
+Đây mới là mental model của Infrastructure Operations.
+
+---
+
+# 2. Syllabus Coverage Checklist — Module Lý thuyết Day 1
+
+Theo syllabus, toàn bộ Concept/Lecture của Day 1 gồm:
+
+### Infrastructure Operations foundation
+
+- Infrastructure administration roles and responsibilities
+- L1/L2 support boundaries
+- operational safety
+- production/non-production environment separation
+- change authorization
+- least-privilege principles
+- standard operating procedures
+- runbooks
+- incident escalation
+- access management
+- configuration baselines
+- asset inventory
+- audit evidence
+- lab readiness
+
+### Linux foundation
+
+- Linux architecture
+- kernel
+- shell
+- distributions
+- Red Hat Enterprise Linux (`RHEL`) và các Linux distributions khác
+- filesystem hierarchy
+- CLI navigation
+- absolute paths
+- relative paths
+- file and directory operations
+- command syntax
+- pipes
+- redirection
+- command history
+- help utilities
+- safe command execution
+
+### Linux identity, permissions và secure administration
+
+- users and groups
+- ownership
+- file permissions
+- `chmod`
+- `chown`
+- `chgrp`
+- `umask`
+- `sudo`
+- SSH authentication
+- SSH key management
+- secure administrative access
+
+Đó là toàn bộ phạm vi bắt buộc cần cover trong phần lý thuyết. Infrastructure_Operations_14_Da…
 
 ---
 
 # PHẦN I — INFRASTRUCTURE OPERATIONS FOUNDATION
 
-## 1. Infrastructure administration roles and responsibilities
+---
 
-### 1.1. What — Infrastructure Administration là gì?
+# 3. Infrastructure Administration Roles and Responsibilities
 
-`Infrastructure Administration` là hoạt động vận hành, duy trì và kiểm soát các thành phần hạ tầng cung cấp nền tảng cho applications và business services.
+## 3.1 Infrastructure Administration là gì?
 
-Một enterprise infrastructure có thể bao gồm:
+Infrastructure Administration là hoạt động vận hành, duy trì, kiểm soát và hỗ trợ các thành phần nền tảng mà applications và business services phụ thuộc vào.
+
+Có thể hình dung:
 
 ```text
-Physical servers
-Virtual machines
-Operating systems
-Storage
-Network
-Firewall
+Business Service
+      │
+      ▼
+Application
+      │
+      ▼
+Operating System
+      │
+      ├── Compute
+      ├── Storage
+      ├── Network
+      ├── Identity
+      ├── Security
+      ├── Virtualization
+      └── Cloud
+```
+
+Infrastructure Operations thường không sở hữu business logic của application nhưng chịu trách nhiệm cho rất nhiều dependency bên dưới nó.
+
+Ví dụ một website không truy cập được.
+
+Nguyên nhân có thể nằm ở:
+
+```text
+Application bug
+DNS
 Load balancer
-Cloud resources
-Backup platforms
-Monitoring systems
-Logging platforms
-Identity systems
-ITSM systems
-Automation
+Firewall
+Routing
+VM
+Operating system
+Filesystem full
+Service stopped
+Certificate
+Authentication
+Storage
+Cloud resource
 ```
 
-Infrastructure administrator không chỉ là người "biết cấu hình server". Công việc thường bao gồm nhiều loại hoạt động:
-
-```text
-Provision
-Configure
-Verify
-Monitor
-Maintain
-Troubleshoot
-Recover
-Secure
-Document
-Escalate
-Audit
-Handover
-```
-
-Một kỹ sư giỏi không được đánh giá chỉ dựa trên số command nhớ được, mà còn ở khả năng thực hiện những command đó **đúng system, đúng thời điểm, đúng authorization, đúng scope, có verification và có evidence**.
+Do đó Infrastructure Operations engineer phải biết **xác định layer chịu trách nhiệm** thay vì đoán.
 
 ---
 
-## 1.2. Why — Tại sao Infrastructure Operations cần discipline?
+## 3.2 Những trách nhiệm cốt lõi
 
-Hãy tưởng tượng bạn nhận ticket:
+Một Infrastructure Operations engineer thường phải quan tâm tới ít nhất:
 
-```text
-"Application không truy cập được thư mục /data/app."
-```
+### Availability
 
-Một người chỉ tập trung vào kỹ thuật có thể ngay lập tức chạy:
-
-```bash
-chmod -R 777 /data/app
-```
-
-Có thể application chạy lại.
-
-Nhưng về operations, đây có thể là một thay đổi cực kỳ tệ.
-
-Bạn chưa xác định:
-
-- lỗi thực sự có phải permission hay không;
-- user nào cần access;
-- group nào được phép access;
-- `777` có vi phạm security policy không;
-- có sensitive data không;
-- recursive change tác động bao nhiêu objects;
-- cấu hình trước đó là gì;
-- cách rollback;
-- change có được authorization không.
-
-Infrastructure Operations vì thế không chỉ hỏi:
-
-> "Command nào sửa được?"
-
-mà còn hỏi:
-
-> "Root cause là gì, tôi có quyền sửa không, cách sửa ít rủi ro nhất là gì, làm sao chứng minh kết quả đúng và làm sao quay lại trạng thái cũ nếu thất bại?"
-
----
-
-# 2. Operational workflow nền tảng
-
-Đây là tư duy cần giữ xuyên suốt 14 Day.
-
-```text
-Request / Alert / Incident
-        ↓
-Confirm identity & authorization
-        ↓
-Confirm target & environment
-        ↓
-Understand current state
-        ↓
-Collect initial evidence
-        ↓
-Determine scope / blast radius
-        ↓
-Choose lowest-risk action
-        ↓
-Perform approved action
-        ↓
-Verify technical result
-        ↓
-Verify business/service result
-        ↓
-Collect post-change evidence
-        ↓
-Update ticket / documentation
-        ↓
-Close or Escalate
-```
-
-Không phải mọi situation đều có từng bước giống hệt nhau, nhưng mental model này cực kỳ quan trọng.
-
-### Một distinction phải nhớ
-
-`Technical success` và `operational success` không hoàn toàn giống nhau.
+System có hoạt động và phục vụ workload hay không?
 
 Ví dụ:
 
 ```text
-Command exit successfully
+Server up?
+Service running?
+Storage mounted?
+Network reachable?
 ```
 
-không nhất thiết đồng nghĩa:
+### Reliability
 
-```text
-Service problem has been resolved.
-```
+System có hoạt động ổn định hay thường xuyên fail?
 
-Một permission có thể được thay đổi thành công nhưng application vẫn không hoạt động.
-
-Một SSH login có thể thành công nhưng lại dùng sai account.
-
-Một configuration change có thể đúng nhưng được thực hiện trên sai server.
-
-Vì vậy phải verify **kết quả thực tế**, không chỉ output của command.
-
----
-
-# 3. L1/L2 support boundaries
-
-## 3.1. What
-
-`Support boundary` xác định những operation mà một support level được:
-
-- inspect;
-- diagnose;
-- execute;
-- modify;
-- approve;
-- escalate.
-
-Không tồn tại một chuẩn toàn cầu nói rằng "L1 luôn làm X, L2 luôn làm Y". Boundary phụ thuộc organization, contract, access model và runbook.
-
-Những mô tả dưới đây là operational model phổ biến, không phải luật cố định.
-
----
-
-## 3.2. L1 thường làm gì?
-
-L1 thường thiên về:
-
-```text
-Monitoring
-Alert triage
-Basic health checking
-Standard diagnostics
-Known-error handling
-Runbook execution
-Evidence collection
-Ticket update
-Initial incident classification
-Escalation
-```
-
-Ví dụ một Linux server không SSH được.
-
-L1 có thể được phép kiểm tra:
-
-```bash
-hostname
-whoami
-id
-```
-
-trên systems vẫn truy cập được, hoặc kiểm tra reachability từ workstation nếu runbook cho phép.
-
-L1 có thể thu thập:
-
-```text
-Timestamp
-Target hostname/IP
-Username
-Exact error message
-Recent changes
-Affected users
-Scope
-```
-
-Nhưng L1 có thể không được phép sửa:
-
-```text
-/etc/ssh/sshd_config
-firewall rules
-PAM configuration
-centralized identity settings
-```
-
----
-
-# 4. L2 support
-
-L2 thường có scope kỹ thuật rộng hơn.
+Một server `up` chưa chắc khỏe.
 
 Ví dụ:
 
 ```text
-Configuration diagnosis
-Service dependency analysis
-Permission troubleshooting
-Advanced OS investigation
-Approved configuration changes
-Recovery actions
-Root-cause isolation
+CPU = 99%
+Filesystem = 100%
+Service restart mỗi 10 phút
+Network có packet loss
 ```
 
-Nhưng L2 cũng không có nghĩa là:
+### Security
 
-> "Có quyền root nên muốn làm gì cũng được."
+System có được quản trị theo principle như:
 
-`root privilege` là technical capability.
+```text
+least privilege
+controlled access
+authorized changes
+credential protection
+auditability
+```
 
-`authorization` là organizational permission.
+hay không.
 
-Hai thứ này hoàn toàn khác nhau.
+### Maintainability
+
+System có dễ bảo trì và troubleshoot hay không?
+
+Một environment không có baseline, inventory hoặc documentation sẽ rất khó vận hành dù hiện tại vẫn chạy.
+
+### Recoverability
+
+Nếu xảy ra lỗi:
+
+```text
+Có backup?
+Có rollback?
+Có recovery procedure?
+Có biết current/previous configuration?
+```
+
+### Auditability
+
+Có chứng minh được:
+
+```text
+Ai?
+Đã làm gì?
+Ở đâu?
+Khi nào?
+Tại sao?
+Kết quả?
+```
+
+hay không.
 
 ---
 
-# 5. Escalation boundary
+# 4. Operational mindset: "working" không đồng nghĩa với "correct"
 
-Một operator phải biết lúc nào **không tiếp tục**.
-
-Các dấu hiệu thường phải escalate gồm:
-
-- action vượt privilege/scope của bạn;
-- cần production configuration change chưa được approve;
-- root cause chưa rõ nhưng proposed change có blast radius lớn;
-- security incident suspected;
-- sensitive credentials có nguy cơ compromise;
-- filesystem hoặc permissions liên quan nhiều applications;
-- business-critical system;
-- rollback không rõ;
-- evidence không đủ để tiếp tục an toàn;
-- runbook yêu cầu escalation;
-- có dấu hiệu issue nằm ngoài technology domain của team.
-
-Một escalation tốt không phải:
+Một người mới thường đánh giá task bằng:
 
 ```text
-"Server lỗi. Nhờ check."
+Command chạy thành công.
+→ Xong.
 ```
 
-Mà nên có:
+Infrastructure Operations phải đánh giá sâu hơn:
 
 ```text
-Affected asset:
-Environment:
-Start time:
-Symptoms:
-Business impact:
-Checks completed:
-Results:
-Changes attempted:
-Evidence:
-Suspected cause:
-Current state:
-Reason for escalation:
+Command chạy thành công
+        │
+        ▼
+State có thay đổi đúng chưa?
+        │
+        ▼
+Service có hoạt động đúng chưa?
+        │
+        ▼
+Security có bị yếu đi không?
+        │
+        ▼
+Dependency có bị ảnh hưởng không?
+        │
+        ▼
+Monitoring có healthy không?
+        │
+        ▼
+Evidence đã đủ chưa?
 ```
-
----
-
-# 6. Operational Safety
-
-Đây là một trong những phần quan trọng nhất của Day 1.
-
-## 6.1. Nguyên tắc inspect before modify
-
-Nếu chưa hiểu trạng thái hiện tại, ưu tiên command read-only.
-
-Ví dụ trước khi đổi ownership:
-
-```bash
-ls -ld /path
-```
-
-trước khi:
-
-```bash
-chown ...
-```
-
-Trước khi đổi permissions:
-
-```bash
-ls -l file
-```
-
-trước:
-
-```bash
-chmod ...
-```
-
-Trước khi cấp `sudo`:
-
-```bash
-sudo -l -U username
-```
-
-nếu bạn có quyền kiểm tra.
-
-Infrastructure Operations nên ưu tiên:
-
-```text
-Observe
-→ Understand
-→ Change
-```
-
-thay vì:
-
-```text
-Change
-→ See what happens
-```
-
----
-
-# 7. Confirm target
-
-Một trong những lỗi operational nguy hiểm nhất:
-
-> đúng command nhưng sai target.
-
-Trước thao tác quan trọng, cần biết mình đang ở đâu.
-
-Các command cơ bản:
-
-```bash
-hostname
-whoami
-id
-pwd
-```
-
-Ý nghĩa:
-
-```text
-hostname  → system nào?
-whoami    → account nào?
-id        → UID/GID/groups nào?
-pwd       → directory nào?
-```
-
-Nếu terminal prompt là:
-
-```text
-[user@server ~]$
-```
-
-không nên coi prompt là evidence tuyệt đối, vì prompt có thể được customize.
-
-`hostname` hoặc các system query thích hợp đáng tin cậy hơn.
-
----
-
-# 8. Blast radius
-
-`Blast radius` là phạm vi tác động nếu operation sai.
 
 Ví dụ:
 
 ```bash
-chmod 640 onefile.txt
+chmod 777 application.conf
 ```
 
-blast radius nhỏ.
-
-Trong khi recursive operation trên một directory tree lớn có thể tác động:
+Command có thể return:
 
 ```text
-thousands of files
-multiple users
-multiple services
-backup agents
-applications
+exit code 0
 ```
 
-Do đó trước action cần biết:
+và application bắt đầu đọc được file.
 
-```text
-What object?
-How many objects?
-Who uses them?
-Can the change be reversed?
-```
+Nhưng về security, đây có thể là một thay đổi rất tệ vì mọi user đều có khả năng `read`, `write`, hoặc tùy object còn có `execute`.
+
+Do đó:
+
+> `Technical success` không nhất thiết là `operational success`.
 
 ---
 
-# 9. Reversibility
+# 5. L1/L2 Support Boundaries
 
-Một operation an toàn thường nên có khả năng rollback.
+## 5.1 Theo syllabus
 
-Ví dụ trước khi thay permission:
+Day 1 yêu cầu hiểu `L1/L2 support boundaries`. Infrastructure_Operations_14_Da…
 
-```bash
-stat file.txt
+Syllabus không định nghĩa cụ thể L1 và L2 được làm command nào, vì boundary thực tế phụ thuộc organization.
+
+Đây là điểm cực kỳ quan trọng.
+
+Không tồn tại rule universal rằng:
+
+```text
+L1 luôn được restart service
 ```
 
 hoặc:
 
-```bash
-ls -l file.txt
-```
-
-để biết state trước đó.
-
-Nếu chỉ biết:
-
 ```text
-"Permission mới = 640"
+L2 luôn được sửa firewall
 ```
 
-nhưng không biết permission cũ là gì, bạn chưa có rollback plan tốt.
+Mỗi organization có:
+
+- RBAC riêng;
+- SOP riêng;
+- approval model riêng;
+- support contract riêng;
+- segregation of duties riêng.
 
 ---
 
-# 10. Read-only và configuration-changing operations
+# 6. L1 thường làm gì?
 
-Đây là distinction rất quan trọng.
+Một mô hình enterprise phổ biến là L1 thiên về:
 
-Ví dụ read-only:
+```text
+Receive
+→ Validate
+→ Triage
+→ Collect evidence
+→ Execute approved basic procedure
+→ Verify
+→ Escalate
+```
+
+Ví dụ Linux incident:
+
+> User báo không truy cập được server qua SSH.
+
+L1 có thể được phép kiểm tra:
+
+```bash
+ping <host>
+```
+
+nếu ICMP được cho phép.
+
+Kiểm tra DNS:
+
+```bash
+getent hosts <hostname>
+```
+
+Kiểm tra current identity:
+
+```bash
+whoami
+```
+
+Kiểm tra thông tin được runbook cho phép.
+
+Sau đó document:
+
+```text
+Target:
+Timestamp:
+Source:
+Symptom:
+Connectivity result:
+Authentication symptom:
+Evidence:
+```
+
+L1 thường không nên tự ý sửa security control chỉ để "cho chạy".
+
+Ví dụ SSH fail không có nghĩa là được phép:
+
+```text
+disable security
+change SSH policy
+give user root
+open firewall broadly
+```
+
+---
+
+# 7. L2 thường làm gì?
+
+L2 thường có technical scope lớn hơn:
+
+```text
+configuration analysis
+permission troubleshooting
+service administration
+identity troubleshooting
+log correlation
+authorized remediation
+```
+
+Ví dụ:
+
+SSH login fail vì:
+
+```text
+incorrect file ownership
+incorrect SSH key permission
+wrong group membership
+sudo configuration problem
+```
+
+L2 có thể điều tra sâu và thực hiện remediation nếu procedure và authorization cho phép.
+
+---
+
+# 8. Escalation boundary
+
+Một engineer giỏi không phải người cố giải quyết mọi thứ.
+
+Một engineer giỏi biết:
+
+```text
+"I can investigate this."
+```
+
+khác với:
+
+```text
+"I am authorized to change this."
+```
+
+Các tình huống nên stop/escalate thường gồm:
+
+- ngoài support scope;
+- thiếu authorization;
+- production impact không xác định;
+- cần credential/quyền mà mình không được cấp;
+- root cause thuộc team khác;
+- procedure không tồn tại;
+- evidence cho thấy cybersecurity incident;
+- change có thể gây outage diện rộng;
+- rollback chưa rõ;
+- current state khác baseline nghiêm trọng;
+- có dấu hiệu data loss.
+
+---
+
+# 9. Operational Safety
+
+Operational safety là nguyên tắc vận hành nhằm giảm nguy cơ:
+
+```text
+outage
+data loss
+security exposure
+configuration drift
+unrecoverable change
+audit violation
+```
+
+Một command có thể hoàn toàn hợp lệ về syntax nhưng vẫn nguy hiểm về operation.
+
+Ví dụ:
+
+```bash
+rm -rf <directory>
+```
+
+Có thể syntactically valid.
+
+Câu hỏi quan trọng hơn là:
+
+```text
+Target có đúng không?
+Directory đó chứa gì?
+Có backup?
+Có dependency?
+Có authorization?
+```
+
+---
+
+# 10. Mô hình thao tác an toàn
+
+Một workflow tốt:
+
+```text
+1. Identify
+2. Observe
+3. Understand
+4. Authorize
+5. Capture baseline
+6. Execute smallest necessary change
+7. Verify
+8. Monitor
+9. Document
+10. Roll back or escalate if needed
+```
+
+### Identify
+
+Bạn đang làm trên machine nào?
+
+```bash
+hostname
+```
+
+Ai đang login?
+
+```bash
+whoami
+id
+```
+
+Current directory là gì?
 
 ```bash
 pwd
-ls -l
-id
-cat /etc/os-release
 ```
 
-Những command này thường dùng để inspect state.
-
-Ví dụ configuration-changing:
-
-```bash
-chmod
-chown
-useradd
-usermod
-```
-
-Chúng thay đổi state.
-
-Không nên suy luận rằng tất cả read-only command đều vô hại tuyệt đối; một số command có thể tiêu thụ nhiều resources hoặc làm lộ dữ liệu. Nhưng về operational classification, distinction này vẫn rất hữu ích.
+Những câu hỏi này rất đơn giản nhưng tránh được rất nhiều lỗi.
 
 ---
 
-# 11. Production và non-production environment separation
+# 11. Principle: verify before modify
 
-## 11.1. Các environment thường gặp
+Ví dụ cần thay permission.
 
-Có thể tồn tại:
+Không nên bắt đầu bằng:
+
+```bash
+chmod 640 important.conf
+```
+
+Nên inspect trước:
+
+```bash
+ls -l important.conf
+stat important.conf
+```
+
+Bạn cần biết state ban đầu.
+
+Nếu change gây lỗi mà không biết original state, rollback sẽ trở thành đoán.
+
+---
+
+# 12. Principle: smallest possible change
+
+Giả sử application không đọc được một file.
+
+Không nên ngay lập tức:
+
+```bash
+chmod 777 file
+```
+
+Cần xác định:
+
+```text
+Which user runs the process?
+Which group?
+Which permission is actually missing?
+Which directory permissions affect traversal?
+```
+
+Sau đó sửa đúng minimum required access.
+
+Đây là intersection giữa:
+
+```text
+operational safety
++
+least privilege
++
+troubleshooting
+```
+
+---
+
+# 13. Production và Non-Production Separation
+
+## 13.1 Production là gì?
+
+`Production` là environment đang trực tiếp phục vụ production workload/business users/customer workload theo định nghĩa của organization.
+
+Production thường có yêu cầu cao hơn về:
+
+- availability;
+- security;
+- monitoring;
+- change control;
+- backup;
+- audit;
+- access;
+- recovery.
+
+---
+
+## 13.2 Non-production
+
+Có thể bao gồm:
 
 ```text
 Development
@@ -494,266 +610,359 @@ Test
 QA
 UAT
 Staging
-Production
-DR
-Lab/Sandbox
+Sandbox
+Lab
+Training
 ```
 
-Mỗi organization có naming convention riêng.
+Nhưng không nên giả định mọi non-production environment đều không quan trọng.
 
-Không được giả định rằng:
-
-```text
-test01
-```
-
-chắc chắn là non-production nếu chưa kiểm tra inventory/documentation.
+Một `UAT` system vẫn có thể chứa sensitive data hoặc phụ thuộc business testing quan trọng.
 
 ---
 
-## 11.2. Production khác gì?
-
-Production thường:
-
-- phục vụ business thực;
-- sử dụng live data;
-- có SLA;
-- có monitoring;
-- yêu cầu formal change;
-- có business owner;
-- có security restrictions cao hơn;
-- có backup/recovery obligations;
-- có incident escalation requirements.
-
-Một thao tác vô hại trong lab có thể không được chấp nhận trên production.
-
----
-
-## 11.3. Vì sao phải tách credentials?
-
-Lý tưởng:
-
-```text
-Lab credential ≠ Production credential
-```
-
-và:
-
-```text
-Normal user ≠ Privileged identity
-```
-
-Điều này giúp hạn chế accidental access và blast radius.
-
----
-
-# 12. Change Authorization
-
-## 12.1. Change là gì?
-
-Một `change` là modification có kiểm soát đối với system, configuration hoặc service.
+# 14. Environment separation không chỉ là đặt tên
 
 Ví dụ:
 
 ```text
-Change file permission
-Create account
-Add sudo privilege
-Change SSH configuration
-Install package
-Restart production service
-Modify firewall policy
+prod-web01
+test-web01
 ```
 
-Không phải tất cả organization phân loại change giống nhau.
+Có tên khác nhau chưa có nghĩa đã separation đúng.
+
+Separation thực sự có thể liên quan:
+
+```text
+Different accounts
+Different VLAN/VPC
+Different credentials
+Different RBAC
+Different secrets
+Different databases
+Different backup policy
+Different change policy
+Different monitoring
+```
 
 ---
 
-# 13. Change authorization không giống technical access
+# 15. Vì sao phải phân biệt environment?
 
-Giả sử:
+Imagine bạn muốn test:
 
-```text
-sudo -l
+```bash
+sudo userdel testuser
 ```
 
-cho thấy bạn có quyền chạy một administrative command.
+Nếu accidentally đang SSH vào production host thay vì lab host, hậu quả có thể hoàn toàn khác.
 
-Điều đó chứng minh system technically cho phép.
+Do đó trước state-changing command, habit tốt là verify:
 
-Nó **không chứng minh** ticket/change process cho phép bạn chạy nó ngay lúc đó.
-
-Có thể bạn có persistent privileged access để phục vụ support, nhưng vẫn phải có:
-
-```text
-Incident ticket
-Approved request
-Change record
-Maintenance window
+```bash
+hostname
+whoami
+pwd
 ```
 
-tùy operation.
+và đối chiếu ticket/environment inventory.
 
 ---
 
-# 14. Một change plan tốt
+# 16. Production safety principle
 
-Một implementation plan nên trả lời được:
+Trước một production change, nên trả lời được:
 
 ```text
-What is being changed?
+What?
 Why?
 Where?
-Who approved?
 When?
-What is the current state?
-What commands/actions will be used?
-How will success be verified?
-What might fail?
-How will rollback work?
-What evidence will be captured?
+Who approved?
+What impact?
+How to verify?
+How to roll back?
 ```
+
+Nếu không trả lời được các câu trên, change chưa sẵn sàng.
 
 ---
 
-# 15. Least Privilege
+# 17. Change Authorization
 
-## 15.1. Definition
+## 17.1 Change là gì?
 
-`Least privilege` nghĩa là một identity, process hoặc service chỉ được cấp những permissions cần thiết cho nhiệm vụ được phép và chỉ trong phạm vi cần thiết.
-
-Concept này áp dụng cho:
-
-```text
-Users
-Groups
-sudo
-SSH
-Filesystem permissions
-Service accounts
-AWS IAM later in the course
-Privileged access systems
-```
-
----
-
-# 16. Vì sao least privilege quan trọng?
-
-Giả sử một account chỉ cần đọc reports.
-
-Nếu account có quyền:
-
-```text
-read + write + delete
-```
-
-thì quyền vượt quá business need.
-
-Nếu account bị compromise, attacker cũng kế thừa các quyền dư thừa đó.
-
-Security risk có thể hình dung:
-
-```text
-Risk ≈ Compromise probability × Privilege × Reach
-```
-
-Không phải công thức định lượng chính thức, nhưng rất hữu ích để hiểu tư duy.
-
----
-
-# 17. Least privilege không đồng nghĩa "càng ít quyền càng tốt"
-
-Nếu giảm quyền tới mức user không hoàn thành nhiệm vụ hợp lệ, access model cũng sai.
-
-Mục tiêu là:
-
-```text
-Minimum sufficient privilege
-```
-
-chứ không phải:
-
-```text
-Minimum possible privilege
-```
-
----
-
-# 18. Separation of duties — Kiến thức bổ sung
-
-Một principle liên quan là `separation of duties`.
-
-Ví dụ người request privileged access không nhất thiết cũng là người tự approve access cho mình.
-
-Mô hình:
-
-```text
-Requester
-    ↓
-Approver
-    ↓
-Implementer
-    ↓
-Reviewer/Auditor
-```
-
-Trong team nhỏ có thể roles bị overlap, nhưng enterprise controls thường cố giảm self-approval.
-
----
-
-# 19. SOP — Standard Operating Procedure
-
-## 19.1. SOP là gì?
-
-`SOP` là tài liệu chuẩn hóa một operational process.
+Trong Infrastructure Operations, `change` là modification làm thay đổi state/configuration của managed environment.
 
 Ví dụ:
 
 ```text
-SOP — Linux User Access Provisioning
+create user
+change permissions
+change sudo rights
+modify SSH configuration
+restart critical service
+change network route
+upgrade package
 ```
 
-có thể định nghĩa:
+Không phải mọi change đều có cùng mức risk.
+
+---
+
+# 18. Read-only vs configuration-changing
+
+Đây là distinction cực kỳ hữu ích.
+
+### Read-only / observational
+
+Ví dụ:
+
+```bash
+id
+ls -l
+pwd
+hostname
+cat /etc/os-release
+```
+
+Mục đích chính là inspect.
+
+### Configuration-changing
+
+Ví dụ:
+
+```bash
+useradd
+usermod
+chmod
+chown
+chgrp
+```
+
+Các command này thay đổi system state.
+
+### Destructive
+
+Ví dụ:
+
+```bash
+rm
+userdel
+```
+
+có khả năng remove object/data.
+
+Do đó mức approval và care phải tăng theo impact.
+
+---
+
+# 19. Change authorization ≠ technical permission
+
+Đây là một nguyên tắc cần nhớ suốt chương trình:
 
 ```text
-Required ticket
-Required approval
-Naming convention
-Group mapping
-Access expiration
-Verification requirements
-Evidence requirements
-Revocation procedure
+sudo permission ≠ business authorization
+```
+
+Bạn có thể technically chạy:
+
+```bash
+sudo chmod ...
+```
+
+nhưng vẫn không được phép làm nếu:
+
+```text
+không có ticket
+không có approval
+ngoài maintenance window
+ngoài support scope
+```
+
+Technical ability không thay thế governance.
+
+---
+
+# 20. Anatomy của một controlled change
+
+Một change tốt thường có:
+
+```text
+Change ID
+Reason
+Scope
+Affected systems
+Pre-checks
+Implementation steps
+Verification
+Risk
+Rollback/backout
+Owner
+Approval
+Maintenance window
+Post-check
+Evidence
+```
+
+Day 11 sẽ học ITSM/ServiceNow chi tiết hơn; Day 1 chỉ cần xây mental model này. Syllabus dành phần formal ITSM/change workflow sâu hơn cho Day 11. Infrastructure_Operations_14_Da…
+
+---
+
+# 21. Least Privilege
+
+## 21.1 Định nghĩa
+
+`Least privilege` nghĩa là:
+
+> Một identity chỉ nên có đúng mức access cần thiết để hoàn thành nhiệm vụ được authorize, trong phạm vi và thời gian cần thiết.
+
+Có ba câu hỏi:
+
+```text
+Who needs access?
+Access to what?
+For what operation?
+```
+
+Và thường thêm:
+
+```text
+For how long?
 ```
 
 ---
 
-## 19.2. Tại sao SOP quan trọng?
+# 22. Ví dụ least privilege
 
-Nếu mỗi administrator thực hiện theo kinh nghiệm riêng:
+Requirement:
+
+> User cần đọc report trong directory `/srv/reports`.
+
+Bad design:
 
 ```text
-Admin A → method A
-Admin B → method B
-Admin C → method C
+Give root access.
 ```
 
-thì operations khó audit, khó reproduce và dễ tạo inconsistency.
-
-SOP hướng team về:
+Better design:
 
 ```text
-Standard
-Repeatable
-Auditable
-Controlled
+group-based read access
+```
+
+Requirement:
+
+> Operator chỉ cần restart một approved service.
+
+Bad design:
+
+```text
+Give unrestricted sudo.
+```
+
+Better design:
+
+```text
+sudo rule limited to required operation
 ```
 
 ---
 
-# 20. Runbook
+# 23. Least privilege theo nhiều layer
 
-`Runbook` thường thiên về từng bước execution hoặc troubleshooting cụ thể.
+Không nên nghĩ least privilege chỉ liên quan `sudo`.
+
+Nó tồn tại ở:
+
+```text
+Identity
+Group membership
+Filesystem permissions
+sudo rights
+SSH access
+Network access
+Application permissions
+Cloud IAM
+Database permissions
+```
+
+Các Day sau sẽ tiếp tục lặp lại nguyên tắc này ở AWS, Nutanix, firewall và IAM audit.
+
+---
+
+# 24. Defense in Depth
+
+**Kiến thức bổ sung**
+
+Least privilege thường hoạt động cùng `defense in depth`.
+
+Ví dụ administrative access có thể cần đồng thời:
+
+```text
+Approved source
+   +
+Network reachability
+   +
+SSH authentication
+   +
+Valid Linux user
+   +
+Filesystem permissions
+   +
+sudo authorization
+```
+
+Một control fail chưa nhất thiết làm toàn bộ environment mất security.
+
+---
+
+# 25. SOP — Standard Operating Procedure
+
+## 25.1 SOP là gì?
+
+`SOP` là procedure chuẩn của organization cho một loại operation.
+
+Ví dụ:
+
+```text
+Linux User Provisioning SOP
+Server Access Review SOP
+Incident Escalation SOP
+```
+
+SOP có thể nói:
+
+```text
+Who may request?
+Who approves?
+Required fields?
+Which naming standard?
+Required verification?
+Required evidence?
+```
+
+---
+
+# 26. Tại sao SOP quan trọng?
+
+Nếu 10 engineers cùng xử lý cùng một task bằng 10 cách khác nhau:
+
+```text
+inconsistency
+configuration drift
+audit difficulty
+higher operational risk
+```
+
+SOP giúp standardize.
+
+---
+
+# 27. Runbook
+
+`Runbook` thường thiên về execution cụ thể hơn.
 
 Ví dụ:
 
@@ -761,116 +970,174 @@ Ví dụ:
 Runbook: SSH Authentication Failure
 ```
 
-có thể có flow:
+Có thể yêu cầu:
 
 ```text
-Confirm target
-   ↓
-Confirm user
-   ↓
-Capture exact SSH error
-   ↓
-Confirm approved key
-   ↓
-Inspect ownership
-   ↓
-Inspect permissions
-   ↓
-Inspect authorized_keys
-   ↓
-Escalate if server-side policy change is required
+1. Confirm correct target
+2. Check network reachability
+3. Capture exact SSH error
+4. Confirm account
+5. Check public-key deployment
+6. Check ownership/permissions
+7. Check relevant server logs
+8. Remediate only within authorized scope
+9. Verify
+10. Escalate if unresolved
 ```
-
-SOP trả lời nhiều về **process**.
-
-Runbook thường trả lời nhiều về **how to execute/diagnose a specific operational procedure**.
-
-Trong thực tế tên gọi có thể overlap.
 
 ---
 
-# 21. Runbook không thay thế reasoning
+# 28. SOP vs Runbook
 
-Không nên chạy từng command trong runbook một cách máy móc.
+Một cách dễ nhớ:
 
-Trước mỗi step vẫn phải hiểu:
+| SOP                             | Runbook                                 |
+| ------------------------------- | --------------------------------------- |
+| quy định quy trình chuẩn        | hướng dẫn execution cho scenario cụ thể |
+| governance-oriented             | operations-oriented                     |
+| thường rộng hơn                 | thường chi tiết hơn                     |
+| mô tả responsibilities/approval | mô tả checks/actions                    |
 
-```text
-What does it do?
-Is this the correct target?
-Is this still applicable?
-Is it safe?
-```
+Trong thực tế hai thuật ngữ có thể được organization dùng hơi khác nhau.
 
-Một runbook cũ có thể không còn phù hợp sau architecture change.
+Không nên tranh luận tên gọi; quan trọng là tuân thủ tài liệu chính thức.
 
 ---
 
-# 22. Incident Escalation
+# 29. Incident Escalation
 
-## 22.1. Incident là gì?
+## 29.1 Incident là gì ở mức nền tảng?
 
-Trong IT operations, `incident` thường là unplanned interruption hoặc degradation đối với service.
+Có thể hiểu đơn giản là:
+
+> Một interruption, degradation hoặc abnormal behavior cần investigation/restoration theo process của organization.
+
+Day 11 mới đi sâu ITSM formal definitions.
+
+---
+
+# 30. Escalation có hai chiều
+
+### Functional escalation
+
+Chuyển cho team có specialization/quyền phù hợp.
 
 Ví dụ:
 
 ```text
-SSH administration unavailable
-Application cannot read required file
-User cannot authenticate
-Service unavailable
+Linux L1
+→ Linux L2
+→ Linux engineering
 ```
 
-Day 11 sẽ đi sâu vào ITSM/ServiceNow; Day 1 chỉ cần foundation.
-
----
-
-# 23. Symptom và root cause
-
-Phân biệt:
+hoặc:
 
 ```text
-Symptom:
-User cannot read file.
-
-Possible root causes:
-Wrong ownership
-Wrong group
-Missing execute permission on parent directory
-Incorrect ACL
-Wrong filesystem mount
-Application identity changed
+Linux Ops
+→ Network team
 ```
 
-Thấy symptom không có nghĩa đã biết root cause.
+### Hierarchical/management escalation
+
+Dùng khi cần attention do:
+
+```text
+high business impact
+SLA risk
+major incident
+approval
+resource coordination
+```
+
+Chi tiết thực tế phụ thuộc organization.
 
 ---
 
-# 24. Evidence before intervention
+# 31. Một escalation tốt cần gì?
 
-Khi troubleshooting, initial evidence rất quan trọng.
+Không gửi:
 
-Nếu bạn thay config quá sớm, bạn có thể làm mất trạng thái giúp tìm root cause.
+> "SSH không được. Nhờ check."
 
-Ví dụ trước sửa:
+Một escalation tốt nên chứa:
 
-```bash
-id user1
-ls -ld /path
-ls -l /path/file
+```text
+Incident/ticket ID
+System
+Environment
+Timestamp/timezone
+User/source
+Exact symptom
+Expected behavior
+Observed behavior
+Checks performed
+Relevant outputs
+Changes made
+Current impact
+Reason for escalation
 ```
-
-Output này có thể quan trọng hơn screenshot sau khi vấn đề đã hết.
 
 ---
 
-# 25. Access Management
+# 32. Evidence before escalation
 
-## 25.1. Authentication và Authorization
+Ví dụ exact symptom:
 
-Hai concept phải phân biệt rõ.
+```text
+Permission denied (publickey)
+```
 
-`Authentication`:
+tốt hơn:
+
+```text
+SSH error.
+```
+
+Bạn cần giữ raw error bởi vì:
+
+```text
+Connection timed out
+Connection refused
+No route to host
+Permission denied
+Host key verification failed
+```
+
+là các failure classes hoàn toàn khác nhau.
+
+---
+
+# 33. Access Management
+
+Access management là lifecycle quản lý quyền truy cập.
+
+Một model đơn giản:
+
+```text
+Request
+  ↓
+Validate identity
+  ↓
+Approval
+  ↓
+Provision
+  ↓
+Verify
+  ↓
+Use
+  ↓
+Review
+  ↓
+Modify / Revoke
+```
+
+---
+
+# 34. Authentication và Authorization
+
+Hai concept phải phân biệt.
+
+### Authentication
 
 > Bạn là ai?
 
@@ -878,19 +1145,54 @@ Ví dụ:
 
 ```text
 Password
-SSH private key
+SSH key
 MFA
-Certificate
 ```
 
-`Authorization`:
+### Authorization
 
-> Bạn được phép làm gì?
+> Sau khi xác minh bạn là ai, bạn được phép làm gì?
 
-Ví dụ user login được nhưng:
+Ví dụ:
+
+```text
+Can user read file?
+Can user run sudo?
+Can user access this server?
+```
+
+SSH login thành công chỉ chứng minh authentication + một phần account authorization.
+
+Nó không có nghĩa user được phép làm mọi operation.
+
+---
+
+# 35. Authentication ≠ Authorization
+
+Mental model:
+
+```text
+User
+ │
+ │ authentication
+ ▼
+Identity verified
+ │
+ │ authorization
+ ▼
+Allowed operations/resources
+```
+
+Ví dụ:
+
+```text
+SSH login successful
+```
+
+nhưng:
 
 ```bash
-cat restricted.txt
+cat /root/secret
 ```
 
 bị:
@@ -899,666 +1201,671 @@ bị:
 Permission denied
 ```
 
-Authentication thành công.
-
-Authorization thất bại.
-
-Đây không phải cùng một problem.
+Hoàn toàn bình thường.
 
 ---
 
-# 26. Accounting/Auditing — Kiến thức bổ sung
+# 36. Access lifecycle risks
 
-Trong security thường gặp bộ ba:
-
-```text
-Authentication
-Authorization
-Accounting
-```
-
-`Accounting` hoặc auditing ghi nhận:
+Các access risks thường gặp:
 
 ```text
-Who
-Did what
-When
-Where
-Result
-```
-
-Đây là lý do named accounts tốt hơn shared accounts.
-
-Nếu năm người đều dùng:
-
-```text
-root
-```
-
-audit attribution kém hơn rất nhiều so với:
-
-```text
-alice → sudo
-bob   → sudo
-carol → sudo
-```
-
----
-
-# 27. Access lifecycle
-
-Một access lifecycle tốt thường gồm:
-
-```text
-Request
-   ↓
-Validate business need
-   ↓
-Approval
-   ↓
-Provision
-   ↓
-Verify
-   ↓
-Review
-   ↓
-Modify if role changes
-   ↓
-Revoke when no longer required
-```
-
-Sai lầm lớn trong access management không chỉ là cấp sai quyền.
-
-Còn có:
-
-```text
-Stale access
-Orphaned accounts
-Unexpired temporary access
+Dormant account
+Orphaned account
 Excessive privilege
-Shared credentials
+Incorrect group membership
+Old SSH key
+Shared account
+Permanent privilege
+Unrevoked access
 ```
 
-Các vấn đề này sẽ quay lại ở Day 11–13.
+Day 13 sẽ mở rộng thành IAM review; Day 1 chỉ cần hiểu foundation.
 
 ---
 
-# 28. Configuration Baseline
+# 37. Configuration Baseline
 
-## 28.1. Baseline là gì?
+## 37.1 Baseline là gì?
 
-`Configuration baseline` là reference state đã được xác định để so sánh với current state.
+`Configuration baseline` là documented reference state dùng để biết system dự kiến phải như thế nào hoặc đã ở trạng thái nào tại thời điểm kiểm soát.
 
-Ví dụ Linux baseline đơn giản:
-
-```text
-Hostname
-OS release
-Kernel
-Expected accounts
-Expected groups
-Expected SSH settings
-Expected sudo rules
-Expected permissions
-```
-
-Baseline không nhất thiết là một file duy nhất. Nó có thể tồn tại trong:
+Ví dụ Linux baseline:
 
 ```text
-CMDB
-Configuration management tool
-Documentation
-Source control
-Build standard
-Hardening standard
-```
-
----
-
-# 29. Configuration drift
-
-Khi current state khác expected baseline:
-
-```text
-Baseline
-   ↓
-approved changes
-   ↓
-Expected configuration
-```
-
-nhưng system thực tế trở thành:
-
-```text
-Unexpected configuration
-```
-
-thì có thể gọi là `configuration drift`.
-
-Không phải mọi drift đều xấu; có thể có approved exceptions.
-
-Điều quan trọng là drift phải được hiểu và kiểm soát.
-
----
-
-# 30. Asset Inventory
-
-## 30.1. Asset là gì?
-
-Trong Infrastructure Operations, một `asset` có thể là:
-
-```text
-Physical server
-Virtual machine
-Network device
-Storage appliance
-Cloud resource
-```
-
-Day 1 chủ yếu quan tâm Linux/RHEL lab asset.
-
----
-
-# 31. Minimum useful inventory
-
-Một Linux inventory cơ bản có thể có:
-
-```text
-Hostname
-Asset identifier
-Environment
+hostname
 OS distribution
-OS release
-Kernel release
-CPU
-Memory
-Storage
-IP addresses
-Owner/team
-Business/service role
+OS version
+kernel
+network identity
+users/groups
+filesystem permissions
+SSH configuration
+sudo policy
 ```
-
-Không phải mọi field đều thuộc Day 1 lab, nhưng bạn cần hiểu inventory phải đủ để **identify đúng system**.
 
 ---
 
-# 32. Asset inventory và configuration baseline khác nhau
+# 38. Baseline vs Current State
 
-Inventory trả lời:
+Troubleshooting rất thường là:
 
-> "Chúng ta có system nào?"
+```text
+Expected/Baseline State
+          VS
+Current State
+```
 
-Baseline trả lời:
+Ví dụ:
 
-> "System đó nên được cấu hình như thế nào?"
+Baseline:
+
+```text
+Owner = app
+Group = appops
+Mode = 640
+```
+
+Current:
+
+```text
+Owner = root
+Group = root
+Mode = 600
+```
+
+Bạn đã có hypothesis rất mạnh về permission issue.
+
+---
+
+# 39. Configuration Drift
+
+**Kiến thức bổ sung**
+
+`Configuration drift` là việc actual configuration dần khác approved/expected configuration.
+
+Nguồn drift:
+
+```text
+manual changes
+emergency fixes
+automation errors
+incomplete rollback
+package updates
+unauthorized changes
+```
+
+Không phải mọi difference đều là lỗi, nhưng difference phải được hiểu.
+
+---
+
+# 40. Asset Inventory
+
+`Asset inventory` trả lời:
+
+```text
+Chúng ta đang quản lý những tài sản nào?
+```
+
+Đối với server:
+
+```text
+hostname
+asset identifier
+environment
+owner
+operating system
+version
+IP
+hardware/VM/cloud identity
+location
+service role
+```
+
+---
+
+# 41. Inventory khác baseline
+
+Hai khái niệm liên quan nhưng không giống nhau.
+
+### Asset inventory
+
+```text
+What exists?
+```
+
+### Configuration baseline
+
+```text
+How should/configured is it?
+```
+
+Ví dụ:
+
+Inventory:
+
+```text
+rhel-app01 exists
+```
+
+Baseline:
+
+```text
+RHEL version X
+Owner team = AppOps
+SSH policy = approved profile
+```
+
+---
+
+# 42. Audit Evidence
+
+## 42.1 Evidence là gì?
+
+`Audit evidence` là material có thể hỗ trợ chứng minh:
+
+```text
+configuration
+action
+state
+approval
+result
+```
 
 Ví dụ:
 
 ```text
-Inventory:
-server01 = RHEL server
-
-Baseline:
-server01 SSH admin access must use approved identities,
-expected group membership and approved configuration.
-```
-
----
-
-# 33. Audit Evidence
-
-## 33.1. Evidence là gì?
-
-`Audit evidence` là artifact chứng minh một operation hoặc state.
-
-Có thể gồm:
-
-```text
 Command output
-Logs
-Screenshots
-Configuration extract
-Ticket reference
-Approval record
+Log record
+Screenshot
+Config extract
+Ticket ID
 Timestamp
-Hash
-Report
-```
-
-Day 1 yêu cầu hình thành discipline này ngay từ đầu.
-
----
-
-# 34. Evidence phải trả lời được gì?
-
-Một evidence tốt nên giúp reviewer biết:
-
-```text
-What system?
-What time?
-Which account?
-What was checked?
-What result?
-What operation?
-Was it successful?
-```
-
-Ví dụ output:
-
-```bash
-ls -l file.txt
-```
-
-mà không biết hostname có thể rất yếu nếu bạn quản trị nhiều systems.
-
-Do đó context cực kỳ quan trọng.
-
----
-
-# 35. Evidence quality
-
-Evidence nên:
-
-```text
-Relevant
-Complete enough
-Readable
-Timestamped
-Attributable
-Protected
-Reproducible where possible
-```
-
-Không nên chứa:
-
-```text
-Passwords
-Private keys
-API tokens
-Secrets
-Sensitive credential material
+Change record
+Inventory report
 ```
 
 ---
 
-# 36. Screenshots không phải evidence duy nhất
+# 43. Evidence phải có context
 
-Screenshot hữu ích cho GUI hoặc visual state.
-
-Nhưng CLI thường tốt hơn khi lưu:
+Output:
 
 ```text
-command + output + timestamp
+uid=1001(ops1) gid=1001(ops1)
 ```
 
-vì text:
+một mình chưa chắc đủ.
 
-- searchable;
-- diff-able;
-- easier to review;
-- easier to archive.
+Evidence tốt hơn có context:
 
-Trong enterprise operations, đôi khi cần cả hai.
+```text
+Host: rhel-lab01
+Timestamp: 2026-...
+Command: id ops1
+Result: ...
+Purpose: Verify account/group state
+Ticket: LAB-D1-...
+```
 
 ---
 
-# 37. Lab Readiness
+# 44. Evidence integrity
 
-Trước hands-on, phải chắc chắn environment phù hợp.
+Bạn cần tránh:
 
-Về theory, bạn phải hiểu sáu loại readiness.
+- sửa output thủ công;
+- cắt mất error quan trọng;
+- trộn output từ nhiều hosts không label;
+- mất timestamp;
+- chứa secret;
+- screenshot không có system context.
 
-### Access readiness
+Evidence phải hữu ích cho người khác review.
 
-Bạn có:
+---
 
-```text
-Approved account
-Correct privilege
-Correct authentication method
-```
+# 45. Secret không phải audit evidence để chia sẻ
 
-### Platform readiness
-
-Linux/RHEL VM hoạt động và bạn biết:
-
-```text
-Hostname
-IP
-OS
-Environment
-```
-
-### Workstation readiness
-
-Có:
+Không bao giờ đưa vào evidence package:
 
 ```text
-Terminal
-SSH client
-Evidence storage
-Text editor
+Password
+Private SSH key
+Secret key
+Token
+Session secret
+Recovery secret
 ```
 
-### Authorization readiness
+Chụp screenshot chứa private key rồi gửi auditor không phải security.
 
-Lab target là authorized system.
+---
 
-### Safety readiness
+# 46. Lab Readiness
 
-Biết:
+Syllabus bao gồm `lab readiness`, bởi vì lab tốt phải được chuẩn bị trước khi execute. Infrastructure_Operations_14_Da…
+
+Mental checklist:
 
 ```text
-What can be changed
-What cannot
-How to rollback
+Authorized lab target?
+Correct account?
+Correct network?
+Administrative workstation ready?
+SSH client available?
+Evidence location ready?
+No real secrets?
+Rollback possible?
 ```
 
-### Evidence readiness
-
-Có location lưu artifacts mà không chứa secrets.
+Đây là bridge từ theory sang Module Thực hành.
 
 ---
 
 # PHẦN II — LINUX ARCHITECTURE FOUNDATION
 
-# 38. Linux là gì?
+---
 
-Cần tránh một nhầm lẫn phổ biến.
+# 47. Linux là gì?
 
-Về kỹ thuật, `Linux` chính xác nhất là kernel.
+Ở mức chính xác về kiến trúc:
 
-Nhưng trong giao tiếp thực tế, người ta thường gọi toàn bộ operating system distribution là Linux.
+`Linux` ban đầu và về mặt technical core là **kernel**.
+
+Một system mà người dùng gọi chung là "Linux" thường bao gồm:
+
+```text
+Linux kernel
++
+system libraries
++
+user-space utilities
++
+shells
++
+package management
++
+services
++
+distribution-specific components
+```
 
 Ví dụ:
 
 ```text
-Linux kernel
-        +
-GNU utilities
-        +
-Libraries
-        +
-Package management
-        +
-Init/service system
-        +
-Distribution tooling
-        =
-Linux distribution
+RHEL
+Ubuntu
+Debian
+Rocky Linux
+AlmaLinux
 ```
 
-RHEL là một Linux distribution.
+đều sử dụng Linux kernel nhưng organization, lifecycle, tooling và package ecosystem có thể khác nhau.
 
 ---
 
-# 39. Linux architecture
+# 48. High-level Linux architecture
 
-Có thể hình dung đơn giản:
+Mental model:
 
 ```text
-+--------------------------------------+
-|              Applications            |
-+--------------------------------------+
-|        Shell / User Utilities         |
-+--------------------------------------+
-|        Libraries / User Space         |
-+--------------------------------------+
-|               Kernel                 |
-+--------------------------------------+
-|              Hardware                |
-+--------------------------------------+
++-----------------------------------+
+| User / Administrator              |
++-----------------------------------+
+                │
+                ▼
++-----------------------------------+
+| Applications / CLI utilities      |
++-----------------------------------+
+                │
+                ▼
++-----------------------------------+
+| Shell / User-space libraries      |
++-----------------------------------+
+                │
+                ▼
++-----------------------------------+
+| System Call Interface             |
++-----------------------------------+
+                │
+                ▼
++-----------------------------------+
+| Linux Kernel                      |
+| process / memory / FS / network   |
++-----------------------------------+
+                │
+                ▼
++-----------------------------------+
+| Hardware                          |
+| CPU / RAM / disk / NIC / devices  |
++-----------------------------------+
 ```
 
-Mô hình này được đơn giản hóa nhưng phù hợp Day 1.
+Không phải mọi command đi "qua shell" theo cùng một cách về implementation, nhưng model này đủ tốt để xây mental model ban đầu.
 
 ---
 
-# 40. Kernel
+# 49. User Space và Kernel Space
 
-`kernel` chạy với privilege cao nhất trong OS và quản lý các tài nguyên cốt lõi.
+**Kiến thức bổ sung cần thiết**
 
-Các trách nhiệm quan trọng gồm:
+Linux phân tách logic giữa:
+
+### Kernel space
+
+Nơi kernel thực hiện privileged operations.
+
+### User space
+
+Nơi phần lớn applications/processes chạy.
+
+Applications không tự ý trực tiếp điều khiển hardware tùy ý.
+
+Chúng sử dụng interfaces do kernel cung cấp.
+
+Điều này giúp:
 
 ```text
-CPU scheduling
-Memory management
-Process management
-Device interaction
-Filesystem access
-Networking
-Security enforcement mechanisms
+isolation
+security
+stability
+resource control
 ```
-
-Applications thông thường không trực tiếp điều khiển hardware.
-
-Chúng yêu cầu kernel thực hiện operations.
 
 ---
 
-# 41. System calls — Kiến thức bổ sung
+# 50. Kernel
 
-User-space program thường giao tiếp với kernel qua `system calls`.
+## 50.1 Kernel làm gì?
 
-Conceptual flow:
+Các responsibility quan trọng gồm:
+
+### Process management
+
+Kernel schedule các processes/threads sử dụng CPU.
+
+### Memory management
+
+Quản lý:
 
 ```text
-Application
-    ↓
-Library/API
-    ↓
-System call
-    ↓
-Kernel
-    ↓
-Hardware / filesystem / network
+virtual memory
+physical memory
+page allocation
 ```
 
-Bạn chưa cần lập trình system call ở Day 1.
+### Filesystem interaction
 
-Mục đích là hiểu:
+Cung cấp abstraction để processes đọc/ghi filesystems.
 
-> shell command cuối cùng vẫn dựa vào OS/kernel để thực hiện công việc.
+### Device management
+
+Thông qua device drivers.
+
+### Networking
+
+TCP/IP stack và network interfaces liên quan nằm ở kernel layer.
+
+### Security primitives
+
+Kernel enforce nhiều access decisions liên quan user IDs, permissions và capabilities.
 
 ---
 
-# 42. User space và kernel space
+# 51. Kiểm tra kernel
 
-`Kernel space` dành cho kernel và privileged kernel operations.
-
-`User space` là nơi phần lớn applications và user processes hoạt động.
-
-Một user application crash thường không đồng nghĩa kernel crash.
-
-Đây là isolation cơ bản của modern operating systems.
-
----
-
-# 43. Kiểm tra kernel
-
-Command:
-
-```bash
-uname
-```
-
-thường trả về kernel/system name.
+Ví dụ:
 
 ```bash
 uname -r
 ```
 
-cho kernel release.
-
-Ví dụ dạng:
+Có thể trả:
 
 ```text
-5.x.x-...
+5.14.0-...
 ```
 
-hoặc:
+Ý nghĩa:
 
 ```text
-6.x.x-...
+-r
 ```
 
-tùy distribution/release.
+yêu cầu kernel release.
 
-Không nên suy luận OS distribution chỉ bằng kernel version.
+Có thể xem thêm:
 
-Để biết distribution, cách thông dụng hơn là:
+```bash
+uname -a
+```
+
+Nhưng trong evidence, tránh thu quá nhiều output không cần thiết nếu mục tiêu chỉ cần kernel release.
+
+---
+
+# 52. Kernel version và OS version không giống nhau
+
+Ví dụ:
+
+```bash
+uname -r
+```
+
+cho kernel.
+
+Trong khi:
 
 ```bash
 cat /etc/os-release
 ```
 
+cho distribution/release metadata.
+
+Không nên nói:
+
+> "`uname -r` cho biết RHEL version."
+
+Không chính xác.
+
 ---
 
-# 44. Shell
+# 53. Shell
 
-## 44.1. Shell là gì?
+## 53.1 Shell là gì?
 
-`Shell` là command interpreter.
+`Shell` là command interpreter/environment cho phép user tương tác với operating system thông qua commands.
 
-Bạn nhập:
+Ví dụ:
+
+```text
+Bash
+sh
+zsh
+```
+
+Day 1 tập trung nền tảng CLI và thường sử dụng `Bash`.
+
+---
+
+# 54. Terminal và Shell khác nhau
+
+Đây là confusion rất phổ biến.
+
+### Terminal / terminal emulator
+
+Là interface/window cung cấp môi trường nhập và hiển thị text.
+
+### Shell
+
+Là chương trình interpret command.
+
+Một terminal có thể chạy:
+
+```text
+bash
+zsh
+sh
+```
+
+Do đó:
+
+> Terminal không phải shell.
+
+---
+
+# 55. Shell prompt
+
+Prompt thường có dạng như:
+
+```text
+[user@host ~]$
+```
+
+hoặc privileged shell có thể thấy:
+
+```text
+[root@host ~]#
+```
+
+Nhưng không nên chỉ dựa vào `$`/`#` để xác định privilege.
+
+Verify bằng:
+
+```bash
+whoami
+id
+```
+
+---
+
+# 56. Shell thực hiện command như thế nào?
+
+Simplified flow:
+
+```text
+User enters command
+       ↓
+Shell parses command
+       ↓
+Expansion/redirection/pipes
+       ↓
+Find builtin or executable
+       ↓
+Execute
+       ↓
+Receive exit status
+       ↓
+Display/process output
+```
+
+Ví dụ:
 
 ```bash
 ls -l /etc
 ```
 
-shell parse command rồi thực thi phù hợp.
-
-Shell cũng hỗ trợ:
+Shell phải hiểu:
 
 ```text
-Variables
-Pipes
-Redirection
-Command substitution
-Scripting
-Control operators
-```
-
-Day 1 chỉ dùng phần foundation.
-
-Day 2 mới đi sâu Bash control flow và scripting.
-
----
-
-# 45. Terminal, shell và CLI khác gì?
-
-Đây là ba concept dễ lẫn.
-
-`Terminal` hoặc terminal emulator là interface hiển thị và nhận input.
-
-Ví dụ terminal application mở một pseudo-terminal.
-
-`Shell` là program chạy bên trong terminal, ví dụ:
-
-```text
-bash
-zsh
-```
-
-`CLI` là phương thức interaction bằng textual command line.
-
-Có thể hình dung:
-
-```text
-Terminal window
-      ↓
-Shell: bash
-      ↓
-Command
-      ↓
-Operating system
+Command = ls
+Option = -l
+Argument = /etc
 ```
 
 ---
 
-# 46. Xác định shell
+# 57. Shell builtin vs external command
 
-Có thể thấy login shell từ account database bằng cách phù hợp, ví dụ:
+**Kiến thức bổ sung**
+
+Một số commands là shell builtins.
+
+Ví dụ trong Bash:
 
 ```bash
-getent passwd "$USER"
+cd
+history
 ```
 
-Hoặc xem shell process/context tùy trường hợp.
+Một số là executable bên ngoài.
 
-Biến:
+Ví dụ thường gặp:
 
 ```bash
-$SHELL
+/usr/bin/ls
 ```
 
-thường biểu diễn configured login shell, nhưng không phải lúc nào cũng chứng minh shell process hiện tại.
+Bạn có thể tìm loại command bằng:
 
-Đây là distinction nhỏ nhưng hữu ích.
+```bash
+type cd
+type ls
+```
+
+Điều này giải thích vì sao `cd` cần là builtin trong shell: nó phải thay đổi working directory của chính shell hiện tại.
 
 ---
 
-# 47. Linux distributions
+# 58. Linux Distributions
 
-Distribution kết hợp Linux kernel với packages, libraries, installers, repositories và management tools.
+## 58.1 Distribution là gì?
 
-Các examples:
+Một Linux distribution package hóa:
+
+```text
+Linux kernel
+userspace utilities
+libraries
+package manager
+repositories
+installer
+defaults
+support lifecycle
+security updates
+```
+
+thành một operating system usable.
+
+---
+
+# 59. Các distributions phổ biến
+
+Ví dụ:
 
 ```text
 Red Hat Enterprise Linux
-Rocky Linux
-AlmaLinux
-Fedora
 Ubuntu
 Debian
 SUSE Linux Enterprise Server
+Rocky Linux
+AlmaLinux
 ```
 
-Không nên giả định commands/package management giống hoàn toàn giữa distributions.
-
-Ví dụ package ecosystem có khác nhau.
-
-Day 2 sẽ tập trung RHEL-style tools như:
-
-```text
-dnf
-yum
-rpm
-```
+Không nên giả định command/package naming giống hoàn toàn trên mọi distro.
 
 ---
 
-# 48. Red Hat Enterprise Linux — RHEL
+# 60. RHEL
 
-RHEL là enterprise Linux distribution của Red Hat.
+`Red Hat Enterprise Linux` là enterprise Linux distribution của Red Hat.
 
-Trong operational environment, một enterprise distribution thường quan trọng bởi:
+Trong syllabus, RHEL là platform Linux quan trọng xuyên suốt Day 1–2. Day 2 đi sâu vào `dnf/yum/rpm`, repositories, `systemd`, SELinux, networking, storage và logs. Infrastructure_Operations_14_Da…
 
-```text
-Vendor support
-Lifecycle management
-Security updates
-Certified ecosystem
-Documentation
-Enterprise tooling
-Predictable maintenance model
-```
-
-Bạn chưa cần nhớ version matrix ở Day 1.
-
-Khi làm việc thực tế phải xác định chính xác release trước khi áp dụng procedure vì behavior và supported options có thể thay đổi theo version.
+Day 1 cần nhận diện được RHEL system và hiểu Linux foundation trước khi vào system administration sâu hơn.
 
 ---
 
-# 49. Xác định Linux distribution
+# 61. Distribution identification
 
-File phổ biến:
+Common method:
 
 ```bash
 cat /etc/os-release
 ```
 
-Ví dụ output có thể chứa:
+Output thường chứa fields như:
 
 ```text
 NAME=
@@ -1567,24 +1874,19 @@ ID=
 VERSION_ID=
 ```
 
-Không nên parse thủ công dựa trên một line cố định nếu viết automation portable, nhưng Day 1 chỉ cần đọc và hiểu.
+Tùy distro giá trị khác nhau.
+
+Đừng hard-code assumption dựa chỉ vào hostname.
 
 ---
 
-# PHẦN III — LINUX FILESYSTEM
+# PHẦN III — LINUX FILESYSTEM HIERARCHY
 
-# 50. Filesystem hierarchy
+---
 
-Linux không tổ chức storage bằng drive letters như:
+# 62. Một filesystem tree duy nhất
 
-```text
-C:
-D:
-```
-
-theo mô hình Windows phổ biến.
-
-Linux xây dựng một unified filesystem tree bắt đầu từ:
+Linux filesystem nhìn từ user space được tổ chức bắt đầu tại:
 
 ```text
 /
@@ -1599,29 +1901,22 @@ Ví dụ:
 ├── etc
 ├── home
 ├── root
-├── var
 ├── usr
+├── var
 ├── tmp
 ├── dev
 ├── proc
+├── sys
 └── ...
 ```
 
-Các disks/filesystems khác có thể được mount vào các directory trong tree này.
-
-Mounting được học sâu hơn ở Day 2.
-
----
-
-# 51. `/`
-
-`/` là filesystem hierarchy root.
-
-Không được nhầm:
+Đừng nhầm:
 
 ```text
 /
 ```
+
+root directory
 
 với:
 
@@ -1629,146 +1924,146 @@ với:
 /root
 ```
 
-`/` là root directory của entire filesystem hierarchy.
-
-`/root` thường là home directory của root user.
+home directory thường dùng cho user `root`.
 
 ---
 
-# 52. `/home`
+# 63. `/etc`
 
-Thường chứa home directories của regular users.
+Thông thường chứa system-wide configuration.
 
-Ví dụ:
-
-```text
-/home/alice
-/home/bob
-```
-
-Nhưng enterprise environments có thể dùng home location khác hoặc centrally mounted home directories.
-
-Không nên hard-code assumption nếu chưa verify.
-
----
-
-# 53. `/root`
-
-Thông thường là home của `root`.
-
-Regular users thường không được truy cập nội dung của `/root`.
-
----
-
-# 54. `/etc`
-
-Chứa nhiều system-wide configuration files.
-
-Ví dụ:
+Ví dụ liên quan Day 1:
 
 ```text
 /etc/passwd
 /etc/group
 /etc/ssh/
-/etc/sudoers
 ```
 
-Vì `/etc` chứa critical configuration, thay đổi ở đây cần đặc biệt cẩn trọng.
+Một principle:
+
+> `/etc` thường chứa configuration, không phải nơi tùy tiện đặt personal data.
 
 ---
 
-# 55. `/var`
+# 64. `/home`
 
-`/var` chứa variable data — dữ liệu thay đổi trong quá trình vận hành.
+Thông thường chứa home directories của normal users.
+
+Ví dụ:
+
+```text
+/home/alice
+/home/ops1
+```
+
+Home directory có thể chứa:
+
+```text
+shell config
+user data
+.ssh
+```
+
+---
+
+# 65. `/root`
+
+Home directory của `root`.
+
+Không phải synonym của `/`.
+
+```text
+/
+```
+
+và:
+
+```text
+/root
+```
+
+là hai paths khác nhau.
+
+---
+
+# 66. `/var`
+
+`/var` thường chứa variable data thay đổi trong quá trình system hoạt động.
 
 Ví dụ:
 
 ```text
 logs
-spools
-caches
-state data
+spool data
+cache/state depending on application
 ```
 
-Một directory rất quan trọng sau này là:
-
-```text
-/var/log
-```
-
-Day 2 đi sâu hơn vào logs.
+Day 2 sẽ quan tâm `/var/log` nhiều hơn.
 
 ---
 
-# 56. `/tmp`
+# 67. `/tmp`
 
-Dùng cho temporary files.
+Thường dành cho temporary files.
 
-Không nên coi `/tmp` là permanent storage.
+Không nên giả định data trong `/tmp` là permanent.
 
-Behavior về cleanup và retention phụ thuộc system configuration.
-
-Security cũng quan trọng vì đây thường là shared writable location.
+Security cũng cần lưu ý vì `/tmp` là shared area trên nhiều systems.
 
 ---
 
-# 57. `/usr`
+# 68. `/usr`
 
-Chứa phần lớn user-space software, libraries và read-mostly resources.
+Chứa phần lớn user-space programs, libraries và shared data theo filesystem layout của Linux system.
 
-Trên nhiều modern distributions:
-
-```text
-/bin
-/sbin
-/lib
-```
-
-có thể được liên kết với corresponding locations dưới `/usr`.
-
-Do đó không nên dùng một mô hình filesystem cũ như chân lý tuyệt đối cho mọi distribution.
-
----
-
-# 58. `/bin` và `/sbin`
-
-Lịch sử:
-
-```text
-/bin   → essential user commands
-/sbin  → system administration commands
-```
-
-Trên modern systems có thể là symbolic links đến:
+Bạn sẽ thường gặp:
 
 ```text
 /usr/bin
 /usr/sbin
+/usr/lib
 ```
-
-Concept cần nhớ không phải physical separation tuyệt đối mà là command locations và compatibility.
 
 ---
 
-# 59. `/dev`
+# 69. `/opt`
+
+Thường được dùng cho optional/add-on software, tùy application/vendor.
+
+Không phải mọi software đều nằm ở đây.
+
+---
+
+# 70. `/boot`
+
+Liên quan boot files.
+
+Day 1 chỉ cần nhận biết.
+
+Không nên thay đổi file trong `/boot` như một exercise thông thường.
+
+---
+
+# 71. `/dev`
 
 Chứa device nodes.
 
-Ví dụ storage devices có thể xuất hiện dưới dạng:
+Ví dụ system có thể expose block devices dưới:
 
 ```text
 /dev/...
 ```
 
-Không thực hành destructive disk operations trong Day 1.
+Day 2 storage sẽ đi sâu hơn.
+
+Không nên treat `/dev` như directory chứa ordinary files.
 
 ---
 
-# 60. `/proc`
+# 72. `/proc`
 
-`/proc` là pseudo-filesystem cung cấp kernel/process information.
-
-Nó không phải ordinary persistent disk directory.
+Là pseudo-filesystem expose kernel/process information.
 
 Ví dụ:
 
@@ -1776,61 +2071,27 @@ Ví dụ:
 cat /proc/cpuinfo
 ```
 
-có thể cung cấp CPU information.
+Thông tin được kernel expose, không phải ordinary file persist trên disk như document thông thường.
 
 ---
 
-# 61. `/sys`
+# 73. `/sys`
 
-`/sys` cũng là virtual filesystem liên quan kernel/device model.
+Pseudo-filesystem cung cấp view về kernel/device model.
 
-Day 1 chỉ cần biết vai trò.
-
----
-
-# 62. `/boot`
-
-Thường chứa boot-related files.
-
-Không được tự ý chỉnh hoặc xóa nội dung `/boot`.
-
----
-
-# 63. `/run`
-
-Thường chứa runtime state từ lúc boot.
-
-Ví dụ:
-
-```text
-PID-related runtime files
-sockets
-temporary runtime state
-```
-
-Dữ liệu thường không được coi là persistent qua reboot.
-
----
-
-# 64. `/mnt`, `/media`, `/opt`
-
-`/mnt` thường dùng cho temporary/manual mount points.
-
-`/media` thường liên quan removable media trong một số environments.
-
-`/opt` thường được dùng cho optional/add-on software.
-
-Exact usage vẫn phụ thuộc distribution/vendor application.
+Day 1 chỉ cần nhận biết.
 
 ---
 
 # PHẦN IV — CLI NAVIGATION VÀ PATHS
 
-# 65. Current Working Directory
+---
 
-Mỗi shell process có một `current working directory`.
+# 74. Current Working Directory
 
-Kiểm tra bằng:
+Mỗi shell process có current working directory.
+
+Xem bằng:
 
 ```bash
 pwd
@@ -1839,16 +2100,18 @@ pwd
 Ví dụ:
 
 ```text
-/home/student
+/home/ops1
 ```
 
-Đây là context rất quan trọng vì relative paths được resolve từ đây.
+Điều này cực kỳ quan trọng vì relative path được giải quyết từ đây.
 
 ---
 
-# 66. `ls`
+# 75. `ls`
 
-Basic:
+`ls` dùng để list directory contents.
+
+Ví dụ:
 
 ```bash
 ls
@@ -1860,23 +2123,23 @@ Detailed:
 ls -l
 ```
 
-Include hidden names:
+Bao gồm hidden entries:
 
 ```bash
 ls -a
 ```
 
-Combine:
+Kết hợp:
 
 ```bash
 ls -la
 ```
 
-Cần hiểu hidden file trên Linux thường là filename bắt đầu bằng:
+---
 
-```text
-.
-```
+# 76. Hidden files
+
+Tên bắt đầu bằng `.` thường không hiện trong `ls` mặc định.
 
 Ví dụ:
 
@@ -1885,102 +2148,59 @@ Ví dụ:
 .ssh
 ```
 
-Không có một hidden attribute tương tự theo cách hiểu cơ bản của Windows; naming convention với leading dot là quan trọng.
+Xem bằng:
+
+```bash
+ls -a
+```
+
+Hidden không có nghĩa là encrypted hoặc protected.
+
+Nó chỉ liên quan naming/display convention.
 
 ---
 
-# 67. `cd`
+# 77. `cd`
 
-Ví dụ:
+Change current working directory:
 
 ```bash
 cd /etc
 ```
 
-đi tới absolute location.
-
-```bash
-cd ..
-```
-
-đi parent directory.
+Về home:
 
 ```bash
 cd ~
 ```
 
-đi home directory.
-
-Thông thường:
+hoặc nhiều shell khi không có argument:
 
 ```bash
 cd
 ```
 
-không argument cũng đi về home directory của shell/user trong Bash-compatible usage.
+Parent:
 
----
-
-# 68. Absolute Path
-
-Absolute path bắt đầu từ `/`.
-
-Ví dụ:
-
-```text
-/etc/ssh/sshd_config
-```
-
-Interpretation:
-
-```text
-/
-└── etc
-    └── ssh
-        └── sshd_config
-```
-
-Không phụ thuộc current directory.
-
----
-
-# 69. Relative Path
-
-Không bắt đầu từ `/`.
-
-Ví dụ current directory:
-
-```text
-/home/student/lab
-```
-
-và bạn dùng:
-
-```text
-files/report.txt
-```
-
-thì path resolve thành:
-
-```text
-/home/student/lab/files/report.txt
+```bash
+cd ..
 ```
 
 ---
 
-# 70. `.` và `..`
-
-`.`:
+# 78. `.` và `..`
 
 ```text
-current directory
+.
 ```
 
-`..`:
+current directory.
 
 ```text
-parent directory
+..
 ```
+
+parent directory.
 
 Ví dụ:
 
@@ -1988,146 +2208,174 @@ Ví dụ:
 ./script.sh
 ```
 
-nghĩa là script trong current directory.
+nghĩa là file `script.sh` nằm trong current directory.
 
 ```bash
-../file.txt
+../file
 ```
 
 nghĩa là file trong parent directory.
 
 ---
 
-# 71. `~`
+# 79. Absolute Path
 
-Shell expansion:
+Absolute path bắt đầu tại root `/`.
+
+Ví dụ:
 
 ```text
-~
+/etc/ssh/sshd_config
 ```
 
-thường trỏ home directory của current user.
+Nó không phụ thuộc current working directory.
+
+Nếu bạn đang ở:
+
+```text
+/home/alice
+```
+
+hay:
+
+```text
+/tmp
+```
+
+path vẫn chỉ một object đó.
+
+---
+
+# 80. Relative Path
+
+Relative path được resolve từ current working directory.
+
+Nếu:
+
+```text
+PWD=/home/alice
+```
+
+thì:
+
+```text
+documents/report.txt
+```
+
+tương ứng:
+
+```text
+/home/alice/documents/report.txt
+```
+
+---
+
+# 81. Vì sao paths là vấn đề an toàn?
 
 Ví dụ:
 
 ```bash
-cd ~/.ssh
+rm file.txt
 ```
+
+Bạn phải biết current directory.
+
+Nếu nhầm `pwd`, bạn có thể remove file không mong muốn.
+
+Do đó trước destructive command:
+
+```bash
+pwd
+ls
+```
+
+có giá trị rất lớn.
 
 ---
 
-# 72. Case sensitivity
+# 82. Spaces trong filenames
 
-Linux filenames thường case-sensitive.
+Shell phân tách arguments theo whitespace trừ khi quoting/escaping.
 
-Do đó:
+Ví dụ file:
 
 ```text
-Report.txt
-report.txt
-REPORT.txt
+monthly report.txt
 ```
 
-có thể là ba files khác nhau.
+Command này sai ý:
 
-Đây là nguồn lỗi phổ biến với users quen Windows environments.
+```bash
+cat monthly report.txt
+```
+
+Shell hiểu thành hai arguments.
+
+Phải quote:
+
+```bash
+cat "monthly report.txt"
+```
+
+Đây là nền tảng shell syntax rất quan trọng.
 
 ---
 
-# 73. Spaces trong filename
-
-Một file:
-
-```text
-My Report.txt
-```
-
-không thể luôn xử lý như:
-
-```bash
-cat My Report.txt
-```
-
-vì shell có thể hiểu thành multiple arguments.
-
-Phải quote hoặc escape:
-
-```bash
-cat "My Report.txt"
-```
-
-hoặc:
-
-```bash
-cat My\ Report.txt
-```
-
-Quoting là shell concept rất quan trọng.
+# PHẦN V — FILE AND DIRECTORY OPERATIONS
 
 ---
 
-# 74. File và Directory Operations
-
-## `touch`
+# 83. Tạo directory — `mkdir`
 
 Ví dụ:
-
-```bash
-touch file.txt
-```
-
-Nếu file chưa tồn tại, thường tạo empty file.
-
-Nếu đã tồn tại, `touch` thường cập nhật timestamps thay vì "tạo lại" file.
-
-Điều này quan trọng vì command name dễ khiến beginner hiểu sai.
-
----
-
-# 75. `mkdir`
-
-Tạo directory:
 
 ```bash
 mkdir reports
 ```
 
-Tạo parent hierarchy khi cần:
+Tạo nested hierarchy:
 
 ```bash
-mkdir -p lab/input
+mkdir -p reports/2026/october
 ```
 
-`-p` cần được hiểu trước khi dùng, đặc biệt trong automation.
+`-p` cho phép tạo parent directories cần thiết và có behavior cụ thể khi directory tồn tại; luôn đọc `man mkdir` trên target system khi cần exact behavior.
 
 ---
 
-# 76. `cp`
+# 84. Tạo empty file — `touch`
 
-Copy file:
+Ví dụ:
+
+```bash
+touch notes.txt
+```
+
+Cần hiểu `touch` chủ yếu update file timestamps; nếu file chưa tồn tại, thông thường nó tạo empty file.
+
+Không nên mô tả `touch` đơn giản là "command tạo file" mà bỏ qua chức năng chính của nó.
+
+---
+
+# 85. Copy — `cp`
 
 ```bash
 cp source.txt destination.txt
 ```
 
-Copy directory thường cần recursive option:
+Copy directory thường dùng recursive option:
 
 ```bash
-cp -r source_dir destination_dir
+cp -r sourcedir targetdir
 ```
 
-Nhưng recursive copy có thể tác động nhiều data; trước production operation phải kiểm tra scope.
+Nhưng production operation cần cân nhắc metadata preservation và workload-specific requirements; Day 1 chỉ học basic file operation.
 
 ---
 
-# 77. `mv`
+# 86. Move/Rename — `mv`
 
-`mv` có thể:
-
-- move;
-- rename.
-
-Ví dụ rename:
+Rename:
 
 ```bash
 mv old.txt new.txt
@@ -2139,11 +2387,11 @@ Move:
 mv report.txt archive/
 ```
 
-Cần lưu ý overwrite behavior và filesystem semantics tùy operation.
+`mv` có thể overwrite tùy circumstances/options, vì vậy inspect destination trước.
 
 ---
 
-# 78. `rm`
+# 87. Remove — `rm`
 
 Remove file:
 
@@ -2151,50 +2399,66 @@ Remove file:
 rm file.txt
 ```
 
-Recursive removal:
+Recursive remove:
 
 ```bash
 rm -r directory
 ```
 
-Các combinations sử dụng `-f` hoặc recursive force có rủi ro cao vì giảm protection prompts/error handling.
+Đây là destructive operation.
 
-Day 1 cần hiểu nguyên tắc:
+Không có universal "Recycle Bin" ở CLI shell operation này để bạn dựa vào.
 
-> Không chạy destructive recursive command trên path mà bạn chưa verify.
+Vì vậy:
 
-Production safety nên bắt đầu bằng:
-
-```bash
-pwd
-ls -ld target
+```text
+verify path
+verify target
+verify backup/recovery
+verify authorization
 ```
 
-và kiểm tra scope trước.
+trước khi remove.
 
 ---
 
-# 79. Linux deletion không có "Recycle Bin" mặc định ở shell
-
-CLI:
+# 88. `rmdir`
 
 ```bash
-rm file
+rmdir directory
 ```
 
-thường không đưa file vào desktop recycle bin.
+thường chỉ remove empty directory.
 
-Recovery có thể rất khó hoặc không khả thi.
-
-Do đó `rm` phải được xem là operation cần attention.
+Điều này làm nó an toàn hơn `rm -r` trong một số simple scenarios.
 
 ---
 
-# PHẦN V — COMMAND SYNTAX
+# 89. Safety misconception: `rm -rf`
 
-# 80. General structure
+Bạn cần nhận thức rằng:
 
-Mô hình:
+```bash
+rm -rf ...
+```
+
+là combination có khả năng remove recursively và suppress một số interaction/error behavior tùy trường hợp.
+
+Day 1 không nên hình thành thói quen thêm `-rf` vào mọi `rm`.
+
+Trong enterprise operations:
+
+> Dùng option mạnh chỉ khi có lý do rõ ràng.
+
+---
+
+# PHẦN VI — COMMAND SYNTAX
+
+---
+
+# 90. General syntax
+
+Mental model:
 
 ```text
 command [options] [arguments]
@@ -2206,35 +2470,31 @@ Ví dụ:
 ls -l /etc
 ```
 
-Trong đó:
-
-```text
-ls      command
--l      option
-/etc    argument
-```
+- `ls`: command
+- `-l`: option
+- `/etc`: argument
 
 ---
 
-# 81. Short và long options
+# 91. Short options và long options
 
-Một số commands có:
+Nhiều GNU utilities hỗ trợ:
 
 ```text
 -h
 ```
 
-và long option dạng:
+và:
 
 ```text
 --help
 ```
 
-Không được suy luận rằng cùng một option letter có cùng ý nghĩa ở mọi command.
+Nhưng không phải mọi command đều có cùng option conventions.
 
-Ví dụ `-r` ở command này có thể hoàn toàn khác `-r` ở command khác.
+Không đoán option.
 
-Khi không chắc:
+Check:
 
 ```bash
 command --help
@@ -2248,23 +2508,177 @@ man command
 
 ---
 
-# 82. Argument order
+# 92. Case sensitivity
 
-Không nên giả định mọi commands đều parse arguments giống nhau.
+Linux filenames thường case-sensitive trên common Linux filesystems.
 
-GNU tools thường khá flexible nhưng scripts, vendor utilities hoặc POSIX tools có thể khác.
+Ví dụ:
 
-Operational habit:
+```text
+Report.txt
+report.txt
+```
 
-> Dùng syntax được documentation xác nhận.
+có thể là hai files khác nhau.
+
+Commands cũng case-sensitive:
+
+```text
+LS
+```
+
+không phải `ls`.
 
 ---
 
-# PHẦN VI — STANDARD STREAMS, PIPES VÀ REDIRECTION
+# 93. Exit status
 
-# 83. stdin, stdout, stderr
+**Kiến thức bổ sung nhưng cực quan trọng**
 
-Unix/Linux process model thường có ba standard streams:
+Commands trả exit status.
+
+Xem exit status gần nhất:
+
+```bash
+echo $?
+```
+
+Convention phổ biến:
+
+```text
+0 = success
+non-zero = some form of failure/condition
+```
+
+Nhưng meaning cụ thể của non-zero status tùy command.
+
+Day 2 sẽ học exit-code handling sâu hơn. Infrastructure_Operations_14_Da…
+
+---
+
+# PHẦN VII — STANDARD INPUT, OUTPUT, PIPES VÀ REDIRECTION
+
+---
+
+# 94. Ba standard streams
+
+Một process CLI thường có:
+
+```text
+stdin  = standard input
+stdout = standard output
+stderr = standard error
+```
+
+Mental model:
+
+```text
+        stdin
+          │
+          ▼
+     [ command ]
+       │      │
+       │      └── stderr
+       ▼
+     stdout
+```
+
+Hiểu ba streams này là nền tảng của Linux automation.
+
+---
+
+# 95. Pipe `|`
+
+Pipe nối `stdout` của command bên trái vào `stdin` của command bên phải.
+
+Ví dụ:
+
+```bash
+cat /etc/passwd | grep ops
+```
+
+Conceptually:
+
+```text
+cat
+ │ stdout
+ ▼
+pipe
+ │ stdin
+ ▼
+grep
+```
+
+---
+
+# 96. Không cần `cat` mọi lúc
+
+Ví dụ:
+
+```bash
+grep ops /etc/passwd
+```
+
+đơn giản hơn:
+
+```bash
+cat /etc/passwd | grep ops
+```
+
+Cả hai giúp minh họa khác nhau:
+
+- dạng `cat | grep` dễ hiểu pipeline;
+- dạng `grep file` gọn hơn cho use case này.
+
+Operationally, nên chọn cách rõ ràng.
+
+---
+
+# 97. Output redirection `>`
+
+```bash
+command > output.txt
+```
+
+Redirect `stdout` vào file.
+
+Quan trọng:
+
+```text
+>
+```
+
+thường truncate/overwrite destination file trước khi ghi.
+
+Do đó nó là operation có khả năng làm mất content cũ.
+
+---
+
+# 98. Append `>>`
+
+```bash
+command >> output.txt
+```
+
+Append vào cuối file thay vì truncate.
+
+Nhưng append không đồng nghĩa với "an toàn hoàn toàn":
+
+- có thể làm file tăng rất lớn;
+- có thể làm duplicate data;
+- có thể ghi nhầm file.
+
+---
+
+# 99. Redirect stderr
+
+Ví dụ:
+
+```bash
+command 2> errors.txt
+```
+
+File descriptor convention:
 
 ```text
 0 = stdin
@@ -2272,244 +2686,133 @@ Unix/Linux process model thường có ba standard streams:
 2 = stderr
 ```
 
-### `stdin`
-
-Standard input.
-
-### `stdout`
-
-Normal output.
-
-### `stderr`
-
-Error/diagnostic output.
-
-Understanding này rất quan trọng cho redirection và scripting sau này.
-
 ---
 
-# 84. Pipe `|`
-
-Pipe kết nối:
-
-```text
-stdout của process A
-        ↓
-stdin của process B
-```
+# 100. Redirect stdout và stderr khác nhau
 
 Ví dụ:
 
 ```bash
-ls -l /etc | grep ssh
+command > output.txt 2> errors.txt
 ```
 
-Flow:
+Giúp phân tách normal output và error.
 
-```text
-ls
- ↓ stdout
-pipe
- ↓ stdin
-grep
-```
-
-Shell không nhất thiết tạo temporary file giữa hai commands.
+Đây là pattern rất hữu ích cho evidence/troubleshooting.
 
 ---
 
-# 85. Pipe không truyền stderr mặc định
+# 101. `/dev/null`
+
+**Kiến thức bổ sung**
+
+Có thể discard output bằng:
+
+```bash
+command > /dev/null
+```
+
+Nhưng khi troubleshoot, suppress output/error quá sớm có thể làm mất evidence.
+
+Principle:
+
+> Khi investigation, giữ information trước; suppress sau khi hiểu behavior.
+
+---
+
+# 102. Input redirection `<`
 
 Ví dụ:
-
-```bash
-somecommand | grep text
-```
-
-thường pipe chỉ nhận stdout.
-
-Errors trên stderr có thể vẫn hiển thị terminal.
-
-Đây là lý do beginner đôi khi thắc mắc tại sao output "vẫn xuất hiện" dù đã pipe/filter.
-
----
-
-# 86. `>` — overwrite stdout destination
-
-Ví dụ:
-
-```bash
-command > output.txt
-```
-
-Thường stdout được redirect vào file.
-
-Nếu file tồn tại, nó thường bị truncate trước khi ghi.
-
-Đây là rủi ro quan trọng.
-
----
-
-# 87. `>>` — append
-
-```bash
-command >> output.txt
-```
-
-Append stdout thay vì truncate existing file.
-
-Không có nghĩa luôn an toàn; file vẫn có thể tăng kích thước không giới hạn nếu dùng sai.
-
----
-
-# 88. `<` — input redirection
-
-Ví dụ conceptual:
 
 ```bash
 command < input.txt
 ```
 
-Program lấy stdin từ file.
+Nội dung file được đưa vào `stdin` của command.
 
-Không phải command nào cũng được thiết kế để xử lý stdin theo cùng cách.
-
----
-
-# 89. `2>`
-
-Redirect stderr:
-
-```bash
-command 2> errors.txt
-```
-
-Trong đó:
-
-```text
-2 = stderr
-```
+Không phải command nào cũng cần hoặc sử dụng stdin theo cách giống nhau.
 
 ---
 
-# 90. `2>&1` — Kiến thức bổ sung cần thiết
-
-Pattern:
-
-```bash
-command > output.log 2>&1
-```
-
-nghĩa là:
-
-1. stdout đi `output.log`;
-2. stderr được redirect tới nơi stdout đang trỏ.
-
-Order có ý nghĩa trong shell redirection.
-
-Day 1 chưa cần làm shell scripting sâu nhưng nên hiểu cơ chế.
+# PHẦN VIII — COMMAND HISTORY
 
 ---
 
-# 91. `tee` — Kiến thức bổ sung
+# 103. `history`
 
-Khi muốn:
-
-```text
-see output on screen
-+
-write output to file
-```
-
-có thể dùng:
-
-```bash
-command | tee output.txt
-```
-
-Đây là tool rất hữu ích cho evidence collection.
-
-Nhưng cần đảm bảo output không chứa secret.
-
----
-
-# PHẦN VII — COMMAND HISTORY
-
-# 92. `history`
-
-Bash thường cung cấp:
+Trong Bash:
 
 ```bash
 history
 ```
 
-để xem command history.
+có thể hiển thị command history tùy shell configuration.
 
-History hữu ích cho:
+History giúp:
 
 ```text
-Recall
-Reproduce
-Troubleshoot
-Review
+reproduce commands
+review work
+avoid retyping
+troubleshoot
 ```
 
 ---
 
-# 93. Security implications của history
+# 104. Security risk của history
 
-Không được nhập secrets trực tiếp vào command line nếu tool hỗ trợ phương thức an toàn khác.
+Không nên đặt secret trên command line nếu có alternative an toàn hơn.
 
-Ví dụ conceptual command:
+Ví dụ anti-pattern:
 
 ```text
-tool --password MySecret123
+somecommand --password SuperSecret123
 ```
 
-có thể làm secret xuất hiện trong:
+vì command có thể xuất hiện ở:
 
 ```text
 shell history
-process listing
+process listings
 logs
-terminal recording
+audit systems
 ```
 
-depending on environment.
-
-Do đó operational principle:
-
-> Credentials không được xem như ordinary command arguments nếu có secure alternative.
+tùy environment/tool.
 
 ---
 
-# 94. History không phải audit log hoàn chỉnh
+# 105. History không phải authoritative audit trail
 
-Không được coi shell history là authoritative audit evidence.
+Command history có thể:
 
-Vì history có thể:
+```text
+không đầy đủ
+bị disabled
+bị thay đổi
+không có context
+không phản ánh output
+```
 
-- bị disabled;
-- không ghi mọi thứ;
-- bị sửa;
-- phụ thuộc shell/session;
-- thiếu privileged context.
+Do đó:
 
-Enterprise audit thường cần central logging hoặc privileged session records, nhưng đây là kiến thức cho các Day sau.
+> `history` hữu ích cho troubleshooting nhưng không nên mặc định coi nó là audit system chính thức.
 
 ---
 
-# PHẦ VIII — HELP UTILITIES
+# PHẦN IX — HELP UTILITIES VÀ SELF-SERVICE DOCUMENTATION
 
-# 95. `man`
+---
 
-Ví dụ:
+# 106. `man`
+
+Manual pages:
 
 ```bash
 man chmod
 ```
 
-Manual page thường cung cấp:
+Typical sections có thể chứa:
 
 ```text
 NAME
@@ -2517,34 +2820,14 @@ SYNOPSIS
 DESCRIPTION
 OPTIONS
 EXAMPLES
-FILES
 SEE ALSO
 ```
 
-Không phải mọi man page đều có tất cả sections.
+Kỹ năng đọc `SYNOPSIS` rất quan trọng.
 
 ---
 
-# 96. Đọc SYNOPSIS
-
-Ví dụ conceptual:
-
-```text
-command [OPTION]... FILE...
-```
-
-Convention thường:
-
-```text
-[]      optional
-...     repeatable
-```
-
-Hiểu synopsis giúp giảm việc chạy command sai.
-
----
-
-# 97. `--help`
+# 107. `--help`
 
 Ví dụ:
 
@@ -2552,15 +2835,13 @@ Ví dụ:
 chmod --help
 ```
 
-thường nhanh hơn `man` khi chỉ cần syntax/options.
+Thường nhanh hơn `man` để kiểm tra syntax/options.
 
 ---
 
-# 98. Shell builtin `help`
+# 108. Shell `help`
 
-Một số commands là shell builtins.
-
-Ví dụ trong Bash:
+Đối với Bash builtins:
 
 ```bash
 help cd
@@ -2572,2993 +2853,413 @@ có thể phù hợp hơn:
 man cd
 ```
 
-vì `cd` được shell thực hiện.
+tùy environment.
 
 ---
 
-# 99. `whatis` và `apropos` — Kiến thức bổ sung
+# 109. `type`
 
-Khi biết command:
-
-```bash
-whatis passwd
-```
-
-có thể xem short description.
-
-Khi chưa biết command:
+Hữu ích để biết shell resolve command như thế nào:
 
 ```bash
-apropos keyword
+type cd
+type ls
 ```
 
-có thể tìm manual database nếu system được cấu hình phù hợp.
+Có thể cho biết:
+
+```text
+builtin
+alias
+function
+executable
+```
+
+tùy command/environment.
 
 ---
 
-# PHẦN IX — SAFE COMMAND EXECUTION
+# 110. Rule quan trọng: không đoán syntax
 
-# 100. Mental checklist trước command
-
-Trước configuration-changing command, phải tự hỏi:
+Khi không chắc:
 
 ```text
-1. Tôi đang ở đúng host?
-2. Tôi đang dùng đúng account?
-3. Đây là đúng environment?
-4. Current directory là gì?
-5. Command tác động objects nào?
-6. Tôi hiểu options không?
-7. Có authorization không?
-8. Blast radius là gì?
-9. Có rollback không?
-10. Tôi sẽ verify bằng cách nào?
-11. Evidence nào cần lưu?
+Don't guess
+→ Read local help/manual
+→ Confirm target version/environment
 ```
 
-Nếu chưa trả lời được câu quan trọng, đừng vội chạy command.
-
----
-
-# 101. Dry observation trước write operation
-
-Ví dụ bạn muốn change permissions.
-
-Thay vì chạy ngay:
-
-```bash
-chmod ...
-```
-
-hãy inspect:
-
-```bash
-ls -l target
-```
-
-và nếu directory:
-
-```bash
-ls -ld target
-```
-
-Hai command khác nhau.
-
-```bash
-ls -l directory
-```
-
-thường list contents.
-
-```bash
-ls -ld directory
-```
-
-inspect directory object itself.
-
-Đây là một distinction rất hữu ích.
-
----
-
-# 102. Preserve before-state evidence
-
-Trước:
+Điều này đặc biệt quan trọng về sau với:
 
 ```text
-Change A
-```
-
-hãy lưu:
-
-```text
-State before A
-```
-
-Sau:
-
-```text
-State after A
-```
-
-Nhờ vậy bạn vừa có:
-
-```text
-verification
-+
-rollback reference
-+
-audit evidence
+RHEL
+AWS CLI
+FortiGate
+BIG-IP
+Nutanix
+PowerShell
 ```
 
 ---
 
-# PHẦ X — LINUX USERS VÀ GROUPS
+# PHẦN X — SAFE COMMAND EXECUTION
 
-# 103. User identity
+---
 
-Linux kernel không thực sự nhìn username theo cách con người nhìn.
+# 111. Phân loại command theo impact
 
-Nó chủ yếu xử lý numeric identity:
+Một useful mental model:
+
+| Class                   | Ví dụ                    | Risk            |
+| ----------------------- | ------------------------ | --------------- |
+| Inspection              | `id`, `pwd`, `ls`        | thấp            |
+| Data creation           | `mkdir`, `touch`, `cp`   | thấp–trung bình |
+| State modification      | `mv`, `chmod`, `chown`   | trung bình      |
+| Identity/privilege      | `useradd`, `sudo` config | cao hơn         |
+| Destructive             | `rm`, `userdel`          | cao             |
+| Security control change | SSH/sudo/security policy | cao             |
+
+Đây không phải formal universal classification, nhưng rất hữu ích.
+
+---
+
+# 112. Pre-flight check
+
+Trước state-changing command:
 
 ```text
-UID
-GID
+Target?
+Environment?
+Identity?
+Current state?
+Authorization?
+Impact?
+Rollback?
 ```
-
-Username/group name là human-readable mappings.
 
 Ví dụ:
 
 ```bash
-id alice
+hostname
+whoami
+pwd
+ls -ld <target>
 ```
 
-có thể cho:
-
-```text
-uid=1001(alice) gid=1001(alice) groups=1001(alice),...
-```
-
-Exact IDs thay đổi giữa systems.
+không phải ritual vô nghĩa. Đó là risk reduction.
 
 ---
 
-# 104. Root user
+# 113. Post-change verification
 
-`root` thường có:
-
-```text
-UID 0
-```
-
-UID 0 có đặc quyền cao nhất trong traditional Unix/Linux privilege model.
-
-Điều quan trọng:
-
-> Account name không phải yếu tố duy nhất; UID mới là core identity.
-
-Một account khác có UID 0 cũng có root-equivalent privilege.
-
-Do đó duplicated UID 0 là security concern nghiêm trọng.
-
----
-
-# 105. Regular users và system accounts
-
-Có thể tồn tại:
+Không dừng ở:
 
 ```text
-Human interactive accounts
-Service accounts
-System accounts
+Command returned no error.
 ```
 
-Không nên dựa chỉ vào UID range để kết luận account type nếu chưa biết distribution policy.
+Bạn phải verify desired state.
 
-System accounts thường phục vụ services và không nhất thiết cần interactive login.
-
----
-
-# 106. `/etc/passwd`
-
-Thông thường chứa account metadata.
-
-Format conceptual:
-
-```text
-name:x:UID:GID:GECOS:home:shell
-```
-
-Ví dụ generic:
-
-```text
-alice:x:1001:1001:Alice:/home/alice:/bin/bash
-```
-
-Field `x` thường cho biết password hash không nằm trực tiếp ở đây.
-
-`/etc/passwd` thường readable để system/tools map IDs, vì vậy nó không nên chứa password hash hiện đại.
-
----
-
-# 107. `/etc/shadow`
-
-Thường chứa password-related security fields và account aging data.
-
-Access bị giới hạn.
-
-Không nên:
+Ví dụ:
 
 ```bash
-cat /etc/shadow
+chmod 640 report.txt
 ```
 
-chỉ vì tò mò hoặc để chụp evidence.
-
-Nó chứa sensitive security information.
-
----
-
-# 108. `/etc/group`
-
-Chứa group information.
-
-Conceptual format:
-
-```text
-group:x:GID:member1,member2
-```
-
-Nhưng membership phải được hiểu cùng primary group data từ user account.
-
----
-
-# 109. Primary và supplementary groups
-
-Một user có:
-
-```text
-one primary group
-```
-
-và có thể có:
-
-```text
-zero or more supplementary groups
-```
-
-Kiểm tra:
+Sau đó:
 
 ```bash
-id username
+stat report.txt
 ```
 
 hoặc:
-
-```bash
-groups username
-```
-
----
-
-# 110. Vì sao groups quan trọng?
-
-Thay vì cấp access từng user:
-
-```text
-Alice → permission
-Bob   → permission
-Carol → permission
-```
-
-có thể dùng:
-
-```text
-appops group
-     ↓
-filesystem access
-```
-
-rồi quản lý membership.
-
-Đây thường dễ maintain hơn và phù hợp role-based administration.
-
----
-
-# 111. `id`
-
-Một trong những command quan trọng nhất Day 1:
-
-```bash
-id
-```
-
-cho current user.
-
-```bash
-id username
-```
-
-cho user cụ thể.
-
-Nó giúp verify:
-
-```text
-UID
-primary GID
-supplementary groups
-```
-
----
-
-# 112. `whoami`
-
-```bash
-whoami
-```
-
-cho effective username.
-
-Nó rất hữu ích sau SSH hoặc `sudo` context changes.
-
----
-
-# 113. `getent`
-
-`getent` truy vấn Name Service Switch databases.
-
-Ví dụ:
-
-```bash
-getent passwd alice
-```
-
-So với trực tiếp:
-
-```bash
-grep alice /etc/passwd
-```
-
-`getent` có advantage rằng environment có thể dùng centralized identity source chứ không chỉ local files.
-
-Đây là **Kiến thức bổ sung rất hữu ích** cho enterprise operations.
-
----
-
-# 114. User management commands
-
-Thông thường gặp:
-
-```text
-useradd
-usermod
-userdel
-passwd
-```
-
-Group:
-
-```text
-groupadd
-groupmod
-groupdel
-```
-
-Behavior về default home directory, shell hoặc skeleton files có thể phụ thuộc distribution/configuration.
-
-Không nên memorise defaults rồi giả định giống mọi server.
-
----
-
-# 115. `useradd`
-
-Ví dụ conceptual:
-
-```bash
-sudo useradd username
-```
-
-Tạo user theo system defaults.
-
-Trong enterprise, trước đó cần:
-
-```text
-Approved naming
-UID policy
-Group assignment
-Home requirement
-Shell requirement
-Expiry requirement
-Ticket approval
-```
-
----
-
-# 116. `usermod`
-
-Có thể thay đổi user attributes.
-
-Một common pitfall rất quan trọng:
-
-Khi quản lý supplementary groups, một option có thể thay thế toàn bộ group list nếu dùng sai thay vì append.
-
-Do đó không chạy `usermod` theo trí nhớ nếu không chắc syntax; hãy đọc:
-
-```bash
-man usermod
-```
-
-Đây chính là ví dụ của safe command execution.
-
----
-
-# 117. `userdel`
-
-Xóa account là potentially destructive operation.
-
-Tùy options có thể liên quan home directory/data.
-
-Trong production:
-
-> Account deprovisioning phải đi cùng ownership/data/access review, không chỉ chạy một command.
-
----
-
-# PHẦ XI — FILE OWNERSHIP VÀ PERMISSIONS
-
-# 118. Linux DAC model
-
-Traditional Linux filesystem permission model thuộc loại `Discretionary Access Control` — DAC.
-
-Mỗi filesystem object thường có:
-
-```text
-Owner UID
-Group GID
-Permission mode
-```
-
-Kernel dùng các thông tin này để quyết định access cùng các security mechanisms khác.
-
-Day 1 tập trung basic DAC.
-
-Day 2 sẽ giới thiệu SELinux, một layer khác.
-
----
-
-# 119. Đọc `ls -l`
-
-Ví dụ:
-
-```text
--rwxr-x--- 1 alice appops 1024 Oct 18 10:30 script.sh
-```
-
-Các fields quan trọng:
-
-```text
--rwxr-x---
-alice
-appops
-```
-
-Mode:
-
-```text
-- rwx r-x ---
-```
-
-Tách ra:
-
-```text
--     object type indicator
-rwx   owner permissions
-r-x   group permissions
----   other permissions
-```
-
----
-
-# 120. First character
-
-Một số common examples:
-
-```text
--   regular file
-d   directory
-l   symbolic link
-```
-
-Có thêm các file types khác nhưng Day 1 chưa cần đi sâu.
-
----
-
-# 121. `r`, `w`, `x` trên regular file
-
-Đối với regular file:
-
-### `r` — read
-
-Được đọc content.
-
-### `w` — write
-
-Được modify content.
-
-### `x` — execute
-
-Có thể execute như program/script nếu các điều kiện khác phù hợp.
-
----
-
-# 122. `r`, `w`, `x` trên directory
-
-Đây là kiến thức cực kỳ quan trọng vì semantics khác file.
-
-### `r` trên directory
-
-Cho phép đọc directory entries/list names.
-
-### `w` trên directory
-
-Cho phép thay đổi directory entries, ví dụ create/delete/rename entries, khi các điều kiện khác cho phép.
-
-### `x` trên directory
-
-Cho phép traverse/search directory.
-
-Nếu thiếu `x`, user có thể gặp:
-
-```text
-Permission denied
-```
-
-ngay cả khi target file có read permission.
-
----
-
-# 123. Parent directory permissions
-
-Giả sử:
-
-```text
-/data/projects/report.txt
-```
-
-Để access `report.txt`, process phải traverse:
-
-```text
-/
-→ /data
-→ /data/projects
-→ report.txt
-```
-
-Nếu thiếu execute/search permission ở parent directory phù hợp, access có thể fail.
-
-Do đó troubleshooting không chỉ nhìn:
 
 ```bash
 ls -l report.txt
 ```
 
-mà còn phải xem path components.
+và quan trọng hơn có thể cần kiểm tra bằng identity thực tế.
 
 ---
 
-# 124. Deleting a file
-
-Một common misconception:
-
-> "File không có write permission nên không thể xóa."
-
-Trong Unix filesystem semantics, deleting một filename chủ yếu là operation trên **parent directory entry**.
-
-Do đó directory permissions rất quan trọng.
-
-Đây là lý do hiểu semantics tốt hơn học thuộc `rwx`.
+# PHẦN XI — USERS AND GROUPS
 
 ---
 
-# 125. Permission classes
+# 114. Linux User
 
-Ba classes:
+User identity được kernel và userspace biểu diễn chủ yếu qua numeric `UID`.
 
-```text
-u = user/owner
-g = group
-o = other
-```
-
-và:
-
-```text
-a = all
-```
-
-trong symbolic `chmod` context.
-
----
-
-# 126. `chmod` symbolic mode
-
-Ví dụ:
-
-```bash
-chmod u+x script.sh
-```
-
-nghĩa là:
-
-```text
-u → owner
-+ → add
-x → execute
-```
-
-Ví dụ:
-
-```bash
-chmod g-w file.txt
-```
-
-remove group write.
-
-Ví dụ:
-
-```bash
-chmod o-r file.txt
-```
-
-remove other read.
-
-Symbolic mode có lợi khi muốn thay đúng một permission mà không rewrite toàn mode.
-
----
-
-# 127. Numeric/octal mode
-
-Values:
-
-```text
-r = 4
-w = 2
-x = 1
-```
-
-Tổng theo từng class.
+Username là human-readable mapping.
 
 Ví dụ:
 
 ```text
-7 = 4 + 2 + 1 = rwx
-6 = 4 + 2     = rw-
-5 = 4 + 1     = r-x
-4 = 4         = r--
-0             = ---
+alice
 ```
+
+có thể tương ứng:
+
+```text
+UID 1001
+```
+
+System về nhiều mặt dựa trên UID, không chỉ string username.
 
 ---
 
-# 128. Ví dụ `chmod 750`
+# 115. User attributes
+
+Một user record thường liên quan:
 
 ```text
-7 = rwx
-5 = r-x
-0 = ---
+username
+UID
+primary GID
+home directory
+login shell
 ```
 
-Nên:
-
-```text
-750
-```
-
-tương ứng:
-
-```text
-rwxr-x---
-```
-
----
-
-# 129. Ví dụ `640`
-
-```text
-6 = rw-
-4 = r--
-0 = ---
-```
-
-tương ứng:
-
-```text
-rw-r-----
-```
-
-Không nên học:
-
-```text
-640 = secure
-755 = normal
-777 = bad
-```
-
-một cách máy móc.
-
-Correct permission luôn phụ thuộc business requirement.
-
----
-
-# 130. Tại sao `777` thường là red flag?
-
-```text
-777
-```
-
-cho:
-
-```text
-owner rwx
-group rwx
-other rwx
-```
-
-Nếu áp dụng tùy tiện, mọi local user có thể có quyền quá lớn.
-
-Nhưng câu đúng hơn không phải:
-
-> "777 luôn luôn sai."
-
-mà là:
-
-> `777` hiếm khi phù hợp cho enterprise application data và phải có business/security justification nếu sử dụng.
-
----
-
-# 131. `chown`
-
-Change ownership.
-
-Generic syntax:
+Xem account database qua:
 
 ```bash
-chown owner file
+getent passwd <username>
+```
+
+Hoặc local file:
+
+```bash
+cat /etc/passwd
+```
+
+Nhưng `getent` thường tốt hơn khi muốn account resolution vì nó có thể sử dụng configured name service sources, không chỉ local file.
+
+---
+
+# 116. `/etc/passwd`
+
+Một line điển hình có colon-separated fields dạng:
+
+```text
+username:x:UID:GID:comment:home:shell
+```
+
+Quan trọng:
+
+Password hash hiện đại thường **không nằm trực tiếp trong `/etc/passwd`**; field `x` thường chỉ reference việc password information được quản lý nơi khác như `/etc/shadow`.
+
+Không cần mở `/etc/shadow` trong lab nếu không có lý do/authorization.
+
+---
+
+# 117. Root user
+
+`root` có:
+
+```text
+UID 0
+```
+
+Root có extremely broad privilege.
+
+Do đó principle:
+
+```text
+Do not work as root by default when not required.
+```
+
+Nên dùng controlled privilege elevation theo policy, thường thông qua `sudo`.
+
+---
+
+# 118. System/service accounts
+
+Không phải mọi account đều là human user.
+
+Linux có thể có accounts dùng cho:
+
+```text
+services
+daemons
+applications
+```
+
+Không nên disable/delete account chỉ vì bạn không nhận ra tên.
+
+Đầu tiên xác định owner/purpose/dependency.
+
+---
+
+# 119. Group
+
+Groups giúp quản lý access theo tập hợp identities.
+
+Một user có:
+
+```text
+primary group
++
+zero or more supplementary groups
+```
+
+Xem:
+
+```bash
+id alice
 ```
 
 hoặc:
 
 ```bash
-chown owner:group file
+groups alice
 ```
-
-Ví dụ conceptual:
-
-```bash
-chown appuser:appgroup config.dat
-```
-
-Đây là state-changing privileged operation trong nhiều situations.
 
 ---
 
-# 132. `chgrp`
+# 120. Tại sao group quan trọng?
 
-Change group ownership:
+Thay vì:
 
-```bash
-chgrp appgroup file
+```text
+grant file access individually to 50 users
 ```
 
-Functionally group owner cũng có thể được thay đổi bằng một số forms của `chown`, nhưng `chgrp` thể hiện intent rõ.
+có thể:
+
+```text
+create/use operations group
+grant group access
+manage membership
+```
+
+Đây là scalable access management.
 
 ---
 
-# 133. Ownership vs permissions
+# 121. `/etc/group`
 
-Sai ownership và sai permission tạo symptom gần giống nhau.
+Local group definitions thường ở:
+
+```text
+/etc/group
+```
+
+Nhưng tương tự users, enterprise system có thể sử dụng identity source khác.
+
+Do đó:
+
+```bash
+getent group <groupname>
+```
+
+thường là useful verification method.
+
+---
+
+# 122. Effective identity
+
+Khi troubleshoot access, không chỉ hỏi:
+
+> User tên gì?
+
+Cần hỏi:
+
+```text
+UID?
+Primary group?
+Supplementary groups?
+Current effective context?
+```
+
+`id` thường là command rất hữu ích.
+
+---
+
+# PHẦN XII — OWNERSHIP
+
+---
+
+# 123. File ownership model
+
+Một filesystem object thường có:
+
+```text
+user owner
+group owner
+```
 
 Ví dụ:
 
 ```text
-Permission denied
+-rw-r----- 1 alice appops 2048 Oct 19 report.txt
 ```
 
-có thể do:
+Relevant fields:
 
 ```text
-Wrong owner
-Wrong group
-Missing group membership
-Wrong mode
-Missing parent x permission
-Other security control
+alice  = owner
+appops = group
 ```
-
-Do đó không nên giải quyết `Permission denied` bằng `chmod 777`.
 
 ---
 
-# 134. Verification
+# 124. Ownership khác permissions
 
-Read-only verification:
+Ownership trả lời:
+
+```text
+Who owns the object?
+Which group owns it?
+```
+
+Permissions trả lời:
+
+```text
+What access does owner/group/other receive?
+```
+
+Hai khái niệm liên quan nhưng không giống nhau.
+
+---
+
+# 125. Inspect ownership
 
 ```bash
 ls -l file
 ```
 
-Detailed metadata:
+hoặc chi tiết:
 
 ```bash
 stat file
 ```
 
-User identity:
+`stat` hữu ích khi cần:
 
-```bash
-id username
-```
-
-Khi troubleshoot, cần xem cả:
-
-```text
-file state
-+
-user identity/group membership
-+
-parent directory state
-```
-
----
-
-# 135. Escalation boundary cho permissions
-
-L1/L2 boundary phụ thuộc organization, nhưng nên escalate khi:
-
-- permission tree phức tạp;
-- owner/group change có thể ảnh hưởng nhiều services;
-- shared storage/NFS involved;
-- ACLs hoặc SELinux có liên quan ngoài scope;
-- proposed recursive `chmod/chown`;
-- sensitive production data;
-- baseline không rõ;
-- root cause chưa xác định.
-
----
-
-# PHẦ XII — `umask`
-
-# 136. `umask` là gì?
-
-`umask` là mask loại bỏ permission bits khi process tạo filesystem objects.
-
-Điểm rất quan trọng:
-
-> `umask` không phải "default permission" trực tiếp.
-
-Nó mask bits từ base creation mode.
-
----
-
-# 137. Base modes
-
-Thông thường conceptual model:
-
-Regular file:
-
-```text
-666
-```
-
-Directory:
-
-```text
-777
-```
-
-Lý do regular files không mặc định executable.
-
----
-
-# 138. Ví dụ `umask 022`
-
-File:
-
-```text
-666
-masked by 022
-→ 644
-```
-
-Directory:
-
-```text
-777
-masked by 022
-→ 755
-```
-
-Kết quả:
-
-File:
-
-```text
-rw-r--r--
-```
-
-Directory:
-
-```text
-rwxr-xr-x
-```
-
----
-
-# 139. `umask 027`
-
-File:
-
-```text
-666
-→ 640
-```
-
-Directory:
-
-```text
-777
-→ 750
-```
-
-Tương ứng:
-
-```text
-file      rw-r-----
-directory rwxr-x---
-```
-
----
-
-# 140. Vì sao nói "666 - 022 = 644" chỉ là shortcut?
-
-Về bản chất `umask` là bit mask operation, không phải arithmetic subtraction theo nghĩa chung.
-
-Với các examples phổ biến phép trừ dễ cho đúng result, nhưng nên hiểu actual logic:
-
-```text
-requested_mode AND NOT umask
-```
-
-Hiểu bản chất giúp tránh sai ở các combination phức tạp.
-
----
-
-# 141. `umask` chỉ ảnh hưởng creation
-
-Thay đổi `umask` không tự đổi permissions của existing files.
-
-Nó ảnh hưởng objects được tạo sau đó bởi process/context liên quan.
-
----
-
-# 142. `umask` và child processes
-
-Process thường inherit `umask` từ parent.
-
-Do đó shell/session configuration có thể ảnh hưởng applications được launch từ đó.
-
-Services cũng có thể có configuration riêng.
-
-Không nên giả định interactive shell `umask` luôn giống service `umask`.
-
----
-
-# PHẦ XIII — `sudo`
-
-# 143. `sudo` giải quyết vấn đề gì?
-
-Nếu mọi administrator đều login trực tiếp root:
-
-```text
-Who did what?
-```
-
-khó trả lời hơn.
-
-Mô hình tốt hơn:
-
-```text
-Named account
-   ↓
-sudo
-   ↓
-Specific approved privileged operation
-```
-
-Benefits:
-
-```text
-Individual accountability
-Least privilege
-Auditability
-Controlled elevation
-```
-
----
-
-# 144. `sudo` không có nghĩa "become root"
-
-Mặc dù use case phổ biến là execute command với root privileges, `sudo` có thể được cấu hình để run as other identities.
-
-Concept quan trọng là:
-
-```text
-controlled privilege delegation
-```
-
----
-
-# 145. Basic usage
-
-```bash
-sudo command
-```
-
-Ví dụ read-only operation được authorized:
-
-```bash
-sudo some-admin-query
-```
-
-Exact command phụ thuộc environment.
-
-Không cần chạy `sudo` nếu operation không yêu cầu privilege.
-
-Nguyên tắc:
-
-> Không elevate chỉ vì "cho chắc".
-
----
-
-# 146. `sudo -l`
-
-Một command rất hữu ích:
-
-```bash
-sudo -l
-```
-
-Hiển thị privileges mà current user được phép sử dụng theo configuration/applicable policy.
-
-Đây thường là verification command quan trọng.
-
----
-
-# 147. `sudoers`
-
-Main policy thường liên quan:
-
-```text
-/etc/sudoers
-```
-
-và có thể include fragments dưới:
-
-```text
-/etc/sudoers.d/
-```
-
-Exact configuration phụ thuộc system.
-
----
-
-# 148. Vì sao dùng `visudo`?
-
-Editing sudo policy sai syntax có thể làm mất privileged access.
-
-`visudo` hỗ trợ syntax validation và locking phù hợp.
-
-Do đó không nên tùy tiện:
-
-```bash
-vi /etc/sudoers
-```
-
-trên production chỉ vì bạn biết `vi`.
-
-Use approved procedure.
-
----
-
-# 149. Sudo rule conceptual structure
-
-Một rule về mặt concept xác định:
-
-```text
-WHO
-ON WHICH HOST
-RUN AS WHOM
-WHICH COMMANDS
-WITH WHAT OPTIONS
-```
-
-Mục tiêu least privilege là thu hẹp các dimensions này.
-
----
-
-# 150. Broad sudo rule
-
-Một rule quá rộng kiểu:
-
-```text
-user may run almost anything as root
-```
-
-gần tương đương full administrative capability.
-
-Nếu business requirement chỉ là một controlled operation, privilege nên giới hạn hơn.
-
----
-
-# 151. Command path quan trọng
-
-Sudo policies thường reference command path.
-
-Do đó cần biết actual executable:
-
-```bash
-command -v commandname
-```
-
-Không giả định executable luôn nằm cùng path trên mọi distribution.
-
----
-
-# 152. Wildcards trong sudoers
-
-Wildcards có thể mở rộng privilege theo những cách không mong muốn.
-
-Một rule tưởng "chỉ cho một folder" có thể dẫn tới unintended access nếu arguments/tool behavior không được hiểu kỹ.
-
-Vì vậy production sudo policy design cần security review khi phức tạp.
-
----
-
-# 153. Shell escape risk
-
-Một số programs tưởng chỉ "view file" nhưng có khả năng:
-
-```text
-launch shell
-execute external commands
-write arbitrary files
-```
-
-Nếu cho program đó chạy qua `sudo`, bạn có thể vô tình cấp quyền lớn hơn dự kiến.
-
-Least-privilege `sudo` vì vậy không chỉ là chọn command name.
-
-Phải hiểu tool capabilities.
-
----
-
-# 154. `NOPASSWD`
-
-`NOPASSWD` có thể phù hợp trong một số controlled automation contexts, nhưng giảm authentication friction và tăng risk nếu account/session compromise.
-
-Không được coi:
-
-```text
-NOPASSWD = convenient = good
-```
-
-Mỗi use case cần security justification.
-
----
-
-# 155. `sudo -k`
-
-Có thể invalidate cached sudo credential state trong common configurations:
-
-```bash
-sudo -k
-```
-
-Hữu ích khi test privilege/authentication behavior trong lab.
-
-Exact behavior vẫn phụ thuộc policy/version.
-
----
-
-# 156. Evidence cho sudo
-
-Evidence nên chứng minh:
-
-```text
-Approved command → allowed
-Unapproved command → denied
-```
-
-Nhưng không được để lộ secrets.
-
-Một access test chỉ chứng minh allowed case chưa đủ để chứng minh least privilege.
-
-Negative test rất quan trọng.
-
----
-
-# PHẦ XIV — SSH FUNDAMENTALS
-
-# 157. SSH là gì?
-
-`SSH` — Secure Shell — là protocol dùng cho secure remote communication và administration.
-
-Common use cases:
-
-```text
-Remote shell
-Remote command execution
-Secure file transfer
-Tunneling
-Authentication
-```
-
-Day 1 tập trung remote administrative access và authentication.
-
----
-
-# 158. Client/server model
-
-Conceptual flow:
-
-```text
-Administrative workstation
-        |
-        | SSH
-        v
-Linux server
-    sshd / SSH server
-```
-
-Client có thể dùng:
-
-```bash
-ssh username@server
-```
-
-Server thường chạy SSH daemon.
-
-Trên many Linux systems daemon/service thường liên quan `sshd`, nhưng service management học sâu ở Day 2.
-
----
-
-# 159. TCP port
-
-SSH mặc định sử dụng:
-
-```text
-TCP/22
-```
-
-Nhưng administrator có thể cấu hình port khác.
-
-Vì vậy:
-
-> "SSH = always port 22" là không chính xác.
-
-Đúng hơn:
-
-> TCP/22 là default well-known SSH port.
-
----
-
-# 160. SSH connection phases
-
-Simplified:
-
-```text
-1. TCP connection
-2. Protocol negotiation
-3. Key exchange
-4. Server host authentication
-5. Encrypted channel established
-6. User authentication
-7. Authorized session/command
-```
-
-Đây là model rất hữu ích để troubleshoot.
-
----
-
-# 161. Host authentication khác user authentication
-
-Đây là distinction cực kỳ quan trọng.
-
-### Host authentication
-
-Client hỏi:
-
-> "Đây có thực sự là server mà tôi muốn kết nối không?"
-
-Sử dụng server `host key`.
-
-### User authentication
-
-Server hỏi:
-
-> "Client/user này có được phép đăng nhập không?"
-
-Có thể dùng:
-
-```text
-Password
-Public-key authentication
-Other approved methods
-```
-
-Hai authentication directions khác nhau.
-
----
-
-# 162. `known_hosts`
-
-Client thường lưu server host keys hoặc fingerprints trong:
-
-```text
-~/.ssh/known_hosts
-```
-
-Khi host key thay đổi, client có thể cảnh báo.
-
-Không nên reflexively xóa warning chỉ để login được.
-
-Host key mismatch có thể do:
-
-```text
-Legitimate server rebuild
-IP/hostname reassignment
-SSH host key rotation
-Wrong target
-Man-in-the-middle risk
-```
-
-Cần verify theo approved process.
-
----
-
-# 163. SSH public-key authentication
-
-Public-key authentication dùng asymmetric key pair:
-
-```text
-Private key
-Public key
-```
-
-Simplified:
-
-```text
-Client holds private key
-Server trusts corresponding public key
-```
-
-Private key không được gửi sang server như password.
-
-Protocol sử dụng cryptographic proof để chứng minh client possesses private key.
-
----
-
-# 164. Private key
-
-Private key phải được coi là secret.
-
-Không:
-
-```text
-Email private key
-Paste private key into ticket
-Store in shared evidence folder
-Screenshot private key contents
-Commit private key to source control
-```
-
-Nếu private key bị exposure, phải xử lý như credential compromise theo organization policy.
-
----
-
-# 165. Public key
-
-Public key không phải secret giống private key.
-
-Public key có thể được đặt ở authorized location của server.
-
-Nhưng vẫn cần quản lý vì nó đại diện cho trust relationship.
-
-Nếu một public key không còn cần thiết, phải revoke/remove theo access process.
-
----
-
-# 166. `authorized_keys`
-
-Common default path:
-
-```text
-~/.ssh/authorized_keys
-```
-
-Nó chứa public keys được authorize cho account đó, trừ khi server configuration chỉ định khác.
-
-Không được hiểu:
-
-> Có public key trong file = chắc chắn login sẽ được.
-
-Server còn xem xét:
-
-```text
-Account state
-SSH server policy
-File ownership
-Permissions
-Allowed authentication methods
-Key restrictions
-Security policies
-```
-
----
-
-# 167. `.ssh` permissions
-
-Common secure conventions thường là:
-
-```text
-~/.ssh                  700
-~/.ssh/authorized_keys  600
-```
-
-và ownership thuộc đúng user.
-
-Nhưng quan trọng hơn việc học thuộc `700/600` là hiểu:
-
-> SSH server không muốn trust authentication material có thể bị unauthorized users chỉnh sửa.
-
-Exact acceptance rules phụ thuộc OpenSSH configuration/platform.
-
----
-
-# 168. Private key permissions
-
-Client private key cũng phải được bảo vệ.
-
-Nếu permissions quá permissive, OpenSSH client có thể từ chối sử dụng key.
-
-Đây là deliberate security behavior.
-
----
-
-# 169. `ssh-keygen`
-
-SSH key pair được tạo bằng:
-
-```bash
-ssh-keygen
-```
-
-Algorithm phải theo organization policy và platform compatibility.
-
-Không nên nói rằng một algorithm duy nhất luôn là lựa chọn đúng cho mọi enterprise environment, vì compliance/FIPS/platform policies có thể khác.
-
----
-
-# 170. Passphrase
-
-Private key có thể được protected bằng passphrase.
-
-Passphrase giúp giảm risk nếu key file bị copy.
-
-Không nên nhầm:
-
-```text
-SSH account password
-```
-
-với:
-
-```text
-Private key passphrase
-```
-
-Đó là hai credentials khác nhau.
-
----
-
-# 171. `ssh-agent` — Kiến thức bổ sung
-
-`ssh-agent` có thể giữ private key material/unlocked identities trong user session để không phải nhập passphrase cho mỗi connection.
-
-Nó tăng usability nhưng cũng tạo security considerations:
-
-```text
-Agent session security
-Forwarding risk
-Workstation compromise
-```
-
-Day 1 chỉ cần awareness.
-
----
-
-# 172. SSH key fingerprint
-
-Fingerprint là compact identifier của key.
-
-Nó hữu ích để:
-
-```text
-Verify correct key
-Compare approvals
-Identify authorized key
-```
-
-thay vì so entire key text bằng mắt.
-
----
-
-# 173. `ssh-copy-id`
-
-Một số environments có:
-
-```bash
-ssh-copy-id user@host
-```
-
-để install public key.
-
-Nhưng enterprise environment có thể yêu cầu controlled provisioning thay vì tự động append.
-
-Vì vậy:
-
-> Tool availability không đồng nghĩa procedure được authorization.
-
----
-
-# 174. SSH connection command
-
-Generic:
-
-```bash
-ssh user@hostname
-```
-
-Nếu port không default:
-
-```bash
-ssh -p PORT user@hostname
-```
-
-Nếu cần chọn identity:
-
-```bash
-ssh -i /path/to/private_key user@hostname
-```
-
-Không nên share actual private key paths/evidence nếu chúng tiết lộ sensitive workstation structure không cần thiết.
-
----
-
-# 175. Debugging SSH
-
-Client verbosity có thể tăng bằng:
-
-```bash
-ssh -v user@hostname
-```
-
-và có các mức verbose cao hơn.
-
-Output rất hữu ích để phân biệt:
-
-```text
-Connection failure
-Host-key stage
-Authentication method
-Key offered
-Key rejected
-Session establishment
-```
-
-Nhưng debug output có thể chứa environment details, usernames, hostnames hoặc metadata nhạy cảm. Phải sanitize trước khi gửi ticket bên ngoài authorized audience.
-
----
-
-# PHẦ XV — SSH TROUBLESHOOTING MODEL
-
-Một error:
-
-```text
-Permission denied
-```
-
-không đủ để kết luận root cause.
-
-Phải xác định failure stage.
-
----
-
-# 176. Stage 1 — Target correctness
-
-Hỏi:
-
-```text
-Đúng hostname?
-Đúng IP?
-Đúng environment?
-```
-
-Một login failure đôi khi chỉ là connecting sai server.
-
-Evidence:
-
-```bash
-hostname
-```
-
-sau khi có một access path hợp lệ, hoặc asset inventory/DNS data theo scope.
-
----
-
-# 177. Stage 2 — Network connection
-
-Nếu error kiểu:
-
-```text
-Connection timed out
-Connection refused
-No route to host
-```
-
-đây chưa chắc là authentication issue.
-
-Có thể liên quan:
-
-```text
-Network
-Firewall
-Port
-Service
-Routing
-```
-
-Networking troubleshooting sâu thuộc Day 2/8/9.
-
-Day 1 chỉ cần biết **phân loại failure stage**.
-
----
-
-# 178. Stage 3 — Host identity
-
-Nếu host key warning:
-
-```text
-REMOTE HOST IDENTIFICATION HAS CHANGED
-```
-
-không nên xóa entry ngay.
-
-Trước tiên verify:
-
-```text
-Was host rebuilt?
-Was IP reused?
-Was key legitimately rotated?
-Is this the correct asset?
-```
-
-Nếu không xác nhận được, escalate.
-
----
-
-# 179. Stage 4 — Username
-
-Một public key có thể đúng nhưng authorized cho:
-
-```text
-alice
-```
-
-không phải:
-
-```text
-bob
-```
-
-Do đó username là part of authentication context.
-
----
-
-# 180. Stage 5 — Key availability
-
-Kiểm tra:
-
-```text
-Đúng private key?
-File accessible?
-Agent đang giữ đúng identity?
-```
-
-Không dùng trial-and-error với random keys trên sensitive systems vì có thể tạo noise/audit alerts.
-
----
-
-# 181. Stage 6 — Server authorization
-
-Server phải có corresponding trust.
-
-Common causes:
-
-```text
-Public key missing
-Wrong authorized_keys
-Wrong owner
-Wrong permissions
-Account disabled
-Server policy rejects method
-Key restriction
-```
-
----
-
-# 182. Stage 7 — Post-authentication access
-
-Có thể authentication thành công nhưng session vẫn fail vì:
-
-```text
-Invalid shell
-Account restriction
-Forced command
-Policy
-Resource problem
-```
-
-Do đó cần distinguish:
-
-```text
-Authentication success
-```
-
-và:
-
-```text
-Usable administrative session
-```
-
----
-
-# PHẦ XVI — SECURE ADMINISTRATIVE ACCESS
-
-# 183. Named accounts
-
-Shared account:
-
-```text
-opsadmin
-```
-
-được 20 người dùng chung làm giảm attribution.
-
-Tốt hơn:
-
-```text
-alice
-bob
-carol
-```
-
-mỗi người có named identity và elevation riêng.
-
----
-
-# 184. Root login
-
-Nhiều organizations hạn chế direct remote root login, thay vào đó dùng:
-
-```text
-Named account
-→ authenticated SSH
-→ sudo
-```
-
-Tuy nhiên đây là security policy decision và server configuration phụ thuộc environment; không nên khẳng định mọi system đều phải giống nhau.
-
----
-
-# 185. Administrative chain
-
-Ideal conceptual chain:
-
-```text
-Human administrator
-        ↓
-Named identity
-        ↓
-Approved SSH authentication
-        ↓
-Linux account
-        ↓
-Least privilege
-        ↓
-sudo only when required
-        ↓
-Auditable administrative action
-```
-
-Đây là một trong những mental models quan trọng nhất Day 1.
-
----
-
-# 186. Secure workstation
-
-Secure access không chỉ phụ thuộc server.
-
-Nếu administrative workstation bị compromise, private key và privileged session cũng có thể bị compromise.
-
-Do đó workstation cần:
-
-```text
-Endpoint protection
-OS patching
-Screen lock
-Credential protection
-Approved software
-Controlled storage
-```
-
-Các chi tiết endpoint security ngoài scope Day 1, nhưng concept phải hiểu.
-
----
-
-# PHẦ XVII — VERIFICATION THINKING
-
-Một Infrastructure Operations engineer không chỉ "configure". Phải verify.
-
-Có ba lớp verification nên phân biệt.
-
----
-
-# 187. Configuration verification
-
-Xác nhận state được cấu hình như mong muốn.
-
-Ví dụ:
-
-```bash
-ls -l file
-```
-
-cho permission.
-
-```bash
-id user
-```
-
-cho group membership.
-
-```bash
-sudo -l
-```
-
-cho privilege.
-
----
-
-# 188. Functional verification
-
-Xác nhận operation thật sự hoạt động.
-
-Ví dụ:
-
-```text
-User expected to read file → can read
-User expected to SSH → can authenticate
-Approved sudo operation → works
-```
-
----
-
-# 189. Negative verification
-
-Xác nhận operation không được phép thực sự bị deny.
-
-Ví dụ:
-
-```text
-Unauthorized user → cannot read
-Unauthorized sudo command → denied
-Unapproved SSH key → rejected
-```
-
-Negative testing rất quan trọng cho security controls.
-
-Một security control chưa được test negative path thì chưa được chứng minh đầy đủ.
-
----
-
-# 190. Why configuration-only verification is insufficient
-
-Giả sử:
-
-```text
-ls -l
-```
-
-trông đúng.
-
-Nhưng user vẫn không access được vì:
-
-```text
-missing parent x
-wrong group membership
-SELinux
-ACL
-application running as different identity
-```
-
-Configuration inspection không thay thế functional test.
-
----
-
-# PHẦ XVIII — TROUBLESHOOTING PHILOSOPHY DAY 1
-
-Troubleshooting ở Day 1 nên theo nguyên tắc từ ít rủi ro đến nhiều rủi ro.
-
-```text
-Observe
-↓
-Confirm context
-↓
-Reproduce safely
-↓
-Gather evidence
-↓
-Inspect dependencies
-↓
-Form hypothesis
-↓
-Test hypothesis read-only if possible
-↓
-Apply approved smallest change
-↓
-Verify
-↓
-Document
-```
-
----
-
-# 191. Không "shotgun troubleshoot"
-
-`Shotgun troubleshooting` là đổi nhiều thứ cùng lúc:
-
-```text
-chmod
-chown
-restart
-change config
-reboot
-```
-
-rồi thấy system hoạt động.
-
-Kết quả:
-
-- không biết root cause;
-- khó rollback;
-- khó audit;
-- có thể tạo latent security issue.
-
-Một change tốt nên controlled và attributable.
-
----
-
-# 192. One-variable-at-a-time principle
-
-Trong controlled troubleshooting:
-
-```text
-Observe A
-Change one relevant variable
-Observe B
-```
-
-giúp xác định causal relationship tốt hơn.
-
-Không phải mọi emergency cho phép process hoàn hảo, nhưng đây là default tốt.
-
----
-
-# 193. Permission troubleshooting example
-
-Symptom:
-
-```text
-alice cannot read /srv/report/data.txt
-```
-
-Không sửa ngay.
-
-Investigate:
-
-```text
-1. Confirm alice identity/groups
-2. Inspect target permissions
-3. Inspect owner/group
-4. Inspect parent directory permissions
-5. Determine expected access model
-6. Compare to baseline/request
-7. Only then propose change
-```
-
-Read-only commands có thể là:
-
-```bash
-id alice
-ls -ld /srv
-ls -ld /srv/report
-ls -l /srv/report/data.txt
-```
-
-Sau này có thể cần ACL/SELinux investigation, nhưng đó vượt core Day 1.
-
----
-
-# PHẦ XIX — EVIDENCE COLLECTION
-
-# 194. Command evidence
-
-Một command/output artifact tốt nên có context.
-
-Ví dụ conceptual evidence:
-
-```text
-Timestamp: 2026-10-18 10:00 +07
-Host: rhel-lab01
-User: student
-Purpose: Verify ownership and permissions
-
-$ ls -l /lab/report.txt
--rw-r----- 1 appuser appops ...
-```
-
-Reviewer ngay lập tức biết:
-
-```text
-When
-Where
-Who
-Why
-Result
-```
-
----
-
-# 195. Before/after evidence
-
-Ví dụ:
-
-```text
-BEFORE
-owner = alice
-group = alice
-mode  = 600
-
-APPROVED CHANGE
-...
-
-AFTER
-owner = appuser
-group = appops
-mode  = 640
-```
-
-Đây là evidence có giá trị hơn chỉ lưu after state.
-
----
-
-# 196. Negative evidence
-
-Ví dụ:
-
-```text
-Expected:
-guest must not read file.
-
-Actual:
-Permission denied.
-
-Result:
-PASS
-```
-
-Security evidence phải chứng minh denied case một cách controlled.
-
----
-
-# 197. Evidence sanitization
-
-Trước submit:
-
-Không để:
-
-```text
-Private key
-Password
-Passphrase
-Token
-Credential
-Sensitive data
-```
-
-Nếu command output chứa sensitive fields, cần redact theo organization procedure nhưng vẫn giữ evidence integrity đủ dùng.
-
----
-
-# PHẦ XX — COMMON MISTAKES DAY 1
-
-Đây là nhóm sai lầm bạn cần chủ động tránh.
-
-### Sai target
-
-Chạy đúng command trên sai host.
-
-### Sai environment
-
-Tưởng lab nhưng thực ra production.
-
-### Dùng root cho mọi việc
-
-Làm mất least privilege và audit attribution.
-
-### `chmod 777` để "fix nhanh"
-
-Che symptom và tạo security exposure.
-
-### Recursive operation thiếu scope
-
-Ví dụ recursive `chmod/chown/rm` trên directory tree không được review.
-
-### Không lưu before state
-
-Không có rollback reference.
-
-### Chỉ test positive path
-
-Access được nhưng chưa chứng minh unauthorized access bị deny.
-
-### Nhầm authentication với authorization
-
-Login thành công nhưng file access fail → không phải SSH authentication problem.
-
-### Nhầm file permission và directory permission
-
-Chỉ nhìn file mode mà quên parent directories.
-
-### Nhầm `/` và `/root`
-
-Rất cơ bản nhưng nguy hiểm.
-
-### Đưa password/private key vào evidence
-
-Security breach.
-
-### Xóa SSH host-key warning mà không verify
-
-Có thể bỏ qua attack hoặc target mismatch.
-
-### Chỉnh `/etc/sudoers` trực tiếp
-
-Risk lockout do syntax error.
-
-### Dùng shared admin account
-
-Audit attribution kém.
-
-### Học thuộc command mà không hiểu effect
-
-Đây là anti-pattern lớn nhất.
-
----
-
-# PHẦ XXI — OPERATIONAL BOUNDARIES
-
-Day 1 phải hình thành tư duy: "biết làm" không đồng nghĩa "nên làm".
-
-Có thể chia actions thành ba vùng.
-
-```text
-LOWER RISK
-Read-only inspection
-Basic verification
-Evidence collection
-
-CONTROLLED CHANGE
-Create lab user
-Change lab permission
-Configure approved sudo
-Install approved public key
-
-HIGHER RISK / ESCALATE OR REQUIRE CHANGE
-Production-wide recursive permissions
-Direct root-access policy change
-SSH daemon security change
-Critical account deletion
-Unknown host-key mismatch
-Privileged configuration without rollback
-```
-
-Classification cụ thể phải theo organization runbook.
-
----
-
-# PHẦ XXII — TỔNG HỢP CÁC OBJECTS PHẢI HIỂU
-
-Sau Module Lý thuyết Day 1, khi nhìn các objects sau bạn phải biết chúng là gì và liên quan với nhau như thế nào:
-
-```text
-Infrastructure asset
-Environment
-Account
-User
-UID
-Group
-GID
-Primary group
-Supplementary group
-Owner
-Group owner
-Permissions
-r / w / x
-umask
-sudo policy
-Private key
-Public key
-Host key
-known_hosts
-authorized_keys
-Configuration baseline
-Runbook
-SOP
-Incident
-Change
-Evidence
-Escalation
-```
-
----
-
-# PHẦ XXIII — DATA FLOW TỔNG HỢP
-
-## Linux local access
-
-```text
-User
- ↓
-Shell
- ↓
-Command
- ↓
-Kernel
- ↓
-Filesystem
- ↓
-UID/GID + ownership + permissions
- ↓
-Allow / Deny
-```
-
----
-
-## SSH remote access
-
-```text
-Administrator
-     ↓
-Administrative workstation
-     ↓
-SSH client
-     ↓
-Host verification
-     ↓
-Encrypted channel
-     ↓
-User authentication
-     ↓
-Linux account
-     ↓
-Authorization
-     ↓
-Shell
-     ↓
-sudo when explicitly required
-```
-
----
-
-## Operational control flow
-
-```text
-Ticket / Request
-      ↓
-Authorization
-      ↓
-Target confirmation
-      ↓
-Baseline/current-state check
-      ↓
-Safe implementation
-      ↓
-Verification
-      ↓
-Evidence
-      ↓
-Close / Rollback / Escalate
-```
-
-Ba flow này khi kết hợp chính là core tư duy Day 1.
-
----
-
-# PHẦ XXIV — COMMAND REFERENCE CỦA MODULE LÝ THUYẾT
-
-Đây không phải lab procedure mà là command map bạn cần hiểu.
-
-| Mục đích                              | Command               |
-| ------------------------------------- | --------------------- |
-| Current identity                      | `whoami`              |
-| UID/GID/groups                        | `id`                  |
-| Host                                  | `hostname`            |
-| Current directory                     | `pwd`                 |
-| List files                            | `ls`                  |
-| Detailed listing                      | `ls -l`               |
-| Hidden files                          | `ls -la`              |
-| Change directory                      | `cd`                  |
-| Kernel release                        | `uname -r`            |
-| Kernel/system detail                  | `uname -a`            |
-| OS distribution                       | `cat /etc/os-release` |
-| Query account                         | `getent passwd USER`  |
-| Query group                           | `getent group GROUP`  |
-| Create empty file/update timestamp    | `touch`               |
-| Create directory                      | `mkdir`               |
-| Copy                                  | `cp`                  |
-| Move/rename                           | `mv`                  |
-| Remove                                | `rm`                  |
-| Change mode                           | `chmod`               |
-| Change owner                          | `chown`               |
-| Change group owner                    | `chgrp`               |
-| Inspect metadata                      | `stat`                |
-| Show current `umask`                  | `umask`               |
-| Check sudo privileges                 | `sudo -l`             |
-| Sudo configuration validation/editing | `visudo`              |
-| Generate SSH key                      | `ssh-keygen`          |
-| SSH connection                        | `ssh`                 |
-| SSH verbose diagnostics               | `ssh -v`              |
-| Manual page                           | `man`                 |
-| Command help                          | `--help`              |
-| Bash builtin help                     | `help`                |
-| Command history                       | `history`             |
-
-Điều quan trọng nhất không phải thuộc bảng này mà phải biết **command nào read-only, command nào change state và command nào có destructive potential**.
-
----
-
-# PHẦ XXV — READ-ONLY VÀ CHANGE COMMAND CLASSIFICATION
-
-### Mostly read-only / verification
-
-```bash
-whoami
-id
-hostname
-pwd
-ls
-uname
-cat /etc/os-release
-getent
-stat
-sudo -l
-```
-
-Lưu ý `cat` chỉ read-only khi target là ordinary readable file; không có nghĩa mọi cách đọc virtual device/file đều vô hại.
-
-### Configuration-changing
-
-```bash
-useradd
-usermod
-userdel
-groupadd
-chmod
-chown
-chgrp
-visudo
-```
-
-### Context-dependent
-
-```bash
-ssh-keygen
-```
-
-thay đổi local key files.
-
-```bash
-ssh
-```
-
-tự nó mở session; những gì làm sau login có thể thay đổi remote system.
-
-```bash
-cp
-mv
-rm
-```
-
-đều có khả năng làm mất/overwrite data tùy arguments.
-
----
-
-# PHẦ XXVI — SECURITY MODEL DAY 1
-
-Day 1 thực chất xây nền cho một security model rất quan trọng:
-
-```text
-Identity
-  ↓
-Authentication
-  ↓
-Authorization
-  ↓
-Least Privilege
-  ↓
-Accountability
-  ↓
-Audit Evidence
-```
-
-Ví dụ SSH:
-
-```text
-Identity:
-alice
-
-Authentication:
-SSH private key
-
-Authorization:
-alice account + groups
-
-Privilege:
-sudo rule
-
-Accountability:
-named account + sudo records
-
-Evidence:
-command/log/ticket
-```
-
-Nếu hiểu flow này, Day 4 AWS IAM và Day 11–13 privileged access/IAM audit sẽ dễ hơn rất nhiều.
-
----
-
-# PHẦ XXVII — CONFIGURATION VS EFFECTIVE ACCESS
-
-Một concept nâng cao nhưng cần hiểu ngay từ Day 1:
-
-> Configured permission không nhất thiết bằng effective permission.
-
-Ví dụ configuration:
-
-```text
-file group = appops
-group permission = read
-```
-
-Nhưng Alice không đọc được vì:
-
-```text
-Alice is not actually a member of appops
-```
-
-hoặc session được tạo trước khi group membership update.
-
-Hoặc parent directory không cho traverse.
-
-Hoặc security control khác deny access.
-
-Do đó luôn distinguish:
-
-```text
-Configured state
-```
-
-với:
-
-```text
-Effective behavior
-```
-
-Đây là lý do functional verification bắt buộc.
-
----
-
-# PHẦ XXVIII — POSITIVE VS NEGATIVE CONTROL
-
-Hãy hình dung một requirement:
-
-```text
-opsuser được đọc report.
-guest không được đọc report.
-```
-
-Một test:
-
-```text
-opsuser reads successfully
-```
-
-chỉ chứng minh half requirement.
-
-Phải thêm:
-
-```text
-guest receives access denied
-```
-
-mới chứng minh security boundary.
-
-Pattern này sẽ lặp lại sau này:
-
-```text
-Firewall:
-allowed flow works
-denied flow fails
-
-IAM:
-approved API works
-unapproved API denied
-
-BIG-IP:
-healthy backend gets traffic
-failed backend does not
-
-Backup:
-backup succeeds
-restore succeeds
-```
-
-Day 1 là nơi bắt đầu tư duy verification hai chiều này.
-
----
-
-# PHẦ XXIX — BASELINE → CHANGE → DRIFT
-
-Một configuration management mental model:
-
-```text
-Approved Baseline
-       |
-       | approved change
-       v
-New Approved Baseline
-```
-
-Nếu có change ngoài control:
-
-```text
-Approved Baseline
-       |
-       | undocumented modification
-       v
-Configuration Drift
-```
-
-Khi troubleshoot, một câu hỏi rất có giá trị là:
-
-> "What changed?"
-
-Nhưng câu thứ hai phải là:
-
-> "Was that change authorized?"
-
----
-
-# PHẦ XXX — INCIDENT VS CHANGE
-
-Hai concepts có thể xuất hiện cùng lúc nhưng khác nhau.
-
-Incident:
-
-```text
-Something is broken/degraded.
-```
-
-Change:
-
-```text
-We intentionally modify something.
-```
-
-Ví dụ:
-
-```text
-Incident:
-User cannot SSH.
-
-Diagnosis:
-authorized_keys ownership incorrect.
-
-Change:
-Correct ownership.
-
-Verification:
-Authorized SSH works.
-Unauthorized key still denied.
-```
-
-Một incident có thể cần một approved change để resolve.
-
----
-
-# PHẦ XXXI — WHY EVIDENCE BEFORE AND AFTER MATTERS
-
-Giả sử bạn phát hiện:
-
-```text
-authorized_keys owner = root
-```
-
-thay vì intended user.
-
-Bạn sửa ownership.
-
-Nếu chỉ lưu evidence sau change:
-
-```text
-owner = alice
-```
-
-reviewer không biết:
-
-- problem ban đầu thực sự là gì;
-- bạn đã thay đổi gì;
-- change có giải quyết root cause không.
-
-Before/after evidence:
-
-```text
-Before:
-root:root
-
-Action:
-approved ownership correction
-
-After:
-alice:alice
-
-Functional test:
-key authentication successful
-```
-
-tạo một operational narrative hoàn chỉnh.
-
----
-
-# PHẦ XXXII — ESCALATION QUALITY
-
-Một junior operator giỏi không phải người không bao giờ escalate.
-
-Ngược lại, họ biết escalate **đúng lúc và có chất lượng**.
-
-Poor escalation:
-
-```text
-"SSH not working."
-```
-
-Good escalation:
-
-```text
-Asset: rhel-app01
-Environment: Production
-Impact: Two administrators unable to establish SSH sessions
-Started: 14:10 +07
-Network connection: TCP connection established
-Host key: Verified against inventory
-Affected accounts: alice, bob
-Authentication: Approved keys offered but rejected
-File ownership: Read-only inspection shows unexpected state
-No configuration changes performed
-Recent change: CHGxxxx completed at 13:45
-Evidence: attached sanitized SSH verbose output
-Request: L2 review of server-side SSH authorization configuration
-```
-
-Người nhận escalation có thể tiếp tục ngay thay vì làm lại từ đầu.
-
----
-
-# PHẦ XXXIII — NHỮNG THỨ CHƯA HỌC SÂU TRONG DAY 1
-
-Để tránh scope creep, bạn nên biết rõ Day 1 **chưa yêu cầu mastery** các nội dung sau:
-
-```text
-Package management
-systemd administration
-Process signals
-SELinux troubleshooting
-firewalld configuration
-Routing/DNS
-Storage partitioning
-/etc/fstab
-journalctl deep analysis
-syslog
-logrotate
-awk/sed deep usage
-Bash control flow
-cron
-tar/rsync backup
-Linux recovery
-```
-
-Chúng thuộc Day 2 theo syllabus. Infrastructure_Operations_14_Da…
-
-Điều này rất quan trọng vì Day 1 phải tập trung làm nền thật chắc thay vì vội học quá rộng.
-
----
-
-# PHẦ XXXIV — MỐI LIÊN HỆ DAY 1 VỚI CÁC DAY SAU
-
-Day 1 không phải một bài Linux isolated. Nó tạo concepts được tái sử dụng toàn khóa.
-
-`Least privilege` của Day 1 trở thành:
-
-```text
-AWS IAM — Day 4
-Privileged access — Day 11
-IAM review — Day 13
-```
-
-`Configuration baseline` trở thành:
-
-```text
-Nutanix baseline
-Network configuration baseline
-Firewall policies
-Asset reconciliation
-```
-
-`Evidence` trở thành:
-
-```text
-CloudTrail
-Event logs
-Prism events
-FortiGate logs
-ServiceNow history
-Audit packages
-```
-
-`Allowed/denied testing` trở thành:
-
-```text
-Security Groups
-Firewall policies
-BIG-IP
-IAM permissions
-```
-
-`Runbook/escalation` xuất hiện xuyên suốt toàn bộ Infrastructure Operations.
-
----
-
-# PHẦ XXXV — DAY 1 THEORY TROUBLESHOOTING FRAMEWORK
-
-Khi gặp một Linux access problem, dùng framework:
-
-```text
-CONTEXT
-│
-├── Correct host?
-├── Correct environment?
-├── Correct account?
-└── Authorized operation?
-        ↓
-IDENTITY
-│
-├── UID?
-├── GID?
-└── Group membership?
-        ↓
-OBJECT
-│
-├── Owner?
-├── Group owner?
-└── Permission mode?
-        ↓
-PATH
-│
-├── Parent permissions?
-└── Can user traverse?
-        ↓
-PRIVILEGE
-│
-├── sudo required?
-└── sudo authorized?
-        ↓
-REMOTE ACCESS
-│
-├── SSH connection?
-├── Host verified?
-├── Correct key?
-└── Key authorized?
-        ↓
-VERIFY
-│
-├── Positive test
-└── Negative test
-        ↓
-EVIDENCE
-        ↓
-RESOLVE / ROLLBACK / ESCALATE
-```
-
-Nếu bạn thực sự hiểu flow này, bạn đã đạt phần lớn learning objective của Module Lý thuyết Day 1.
-
----
-
-# PHẦ XXXVI — MỨC ĐỘ HIỂU CẦN ĐẠT CHO TỪNG TOPIC
-
-| Topic syllabus         | Sau khi học bạn phải làm được về mặt kiến thức                  |
-| ---------------------- | --------------------------------------------------------------- |
-| Infrastructure roles   | Giải thích nhiệm vụ Infrastructure Operations và accountability |
-| L1/L2 boundaries       | Phân biệt authorized scope và escalation                        |
-| Operational safety     | Áp dụng inspect-first, smallest change, rollback, evidence      |
-| Prod/non-prod          | Giải thích vì sao cùng một action có risk khác nhau             |
-| Change authorization   | Phân biệt technical privilege và organizational approval        |
-| Least privilege        | Thiết kế permission đủ dùng, không quá rộng                     |
-| SOP                    | Hiểu standard process                                           |
-| Runbook                | Hiểu execution/troubleshooting instructions                     |
-| Incident escalation    | Thu thập context và escalate có chất lượng                      |
-| Access management      | Phân biệt authentication/authorization/access lifecycle         |
-| Configuration baseline | Biết expected state và drift                                    |
-| Asset inventory        | Xác định system chính xác                                       |
-| Audit evidence         | Biết evidence nào có giá trị và cách bảo vệ secrets             |
-| Lab readiness          | Biết prerequisites trước administration                         |
-| Linux architecture     | Phân biệt kernel/user space/shell                               |
-| Distribution/RHEL      | Hiểu distribution concept và enterprise context                 |
-| Filesystem hierarchy   | Hiểu `/`, `/etc`, `/home`, `/var`, `/usr`...                    |
-| CLI navigation         | Hiểu `pwd`, `ls`, `cd`                                          |
-| Paths                  | Phân biệt absolute/relative, `.`, `..`, `~`                     |
-| File operations        | Hiểu create/copy/move/delete và risk                            |
-| Command syntax         | Hiểu command/options/arguments                                  |
-| Pipes                  | Hiểu stdout → stdin chaining                                    |
-| Redirection            | Hiểu stdout/stderr/input và overwrite/append                    |
-| History                | Dùng và nhận biết credential risk                               |
-| Help utilities         | Tự tra syntax đúng                                              |
-| Safe execution         | Xác nhận target/scope/rollback/verification                     |
-| Users/groups           | Hiểu UID/GID/primary/supplementary groups                       |
-| Ownership              | Hiểu owner/group owner                                          |
-| Permissions            | Hiểu `rwx` trên file và directory                               |
-| `chmod`                | Đọc symbolic và octal mode                                      |
-| `chown/chgrp`          | Hiểu ownership changes                                          |
-| `umask`                | Tính effective creation permissions                             |
-| `sudo`                 | Hiểu controlled privilege elevation                             |
-| SSH                    | Hiểu secure remote access flow                                  |
-| SSH authentication     | Phân biệt host/user authentication                              |
-| SSH keys               | Phân biệt private/public key                                    |
-| Secure admin access    | Kết hợp named identity + SSH + least privilege + audit          |
-
----
-
-# PHẦ XXXVII — CHEAT SHEET LÝ THUYẾT DAY 1
-
-## Identity
-
-```bash
-whoami
-id
-groups
-getent passwd USER
-getent group GROUP
-```
-
-Core concepts:
-
-```text
-UID
-GID
-Primary group
-Supplementary groups
-```
-
----
-
-## System identity
-
-```bash
-hostname
-uname -r
-uname -a
-cat /etc/os-release
-```
-
----
-
-## Navigation
-
-```bash
-pwd
-ls
-ls -l
-ls -la
-cd
-cd ..
-cd ~
-```
-
-Concepts:
-
 ```text
-/
-.
-..
-~
-absolute path
-relative path
+numeric mode
+ownership
+timestamps
+inode-related information
 ```
 
 ---
-
-## Files
-
-```bash
-touch
-mkdir
-cp
-mv
-rm
-stat
-```
 
-Safety:
+# PHẦN XIII — FILE PERMISSIONS
 
-```text
-Confirm target
-Confirm current directory
-Avoid uncontrolled recursive actions
-Preserve before state
-```
-
 ---
 
-## Permissions
-
-```bash
-ls -l
-chmod
-chown
-chgrp
-umask
-```
+# 126. Three permission classes
 
-Mode:
+Traditional UNIX mode chia thành:
 
 ```text
-r = 4
-w = 2
-x = 1
+user
+group
+other
 ```
 
-Classes:
+thường viết:
 
 ```text
 u
@@ -5568,136 +3269,2371 @@ o
 
 ---
 
-## `umask`
-
-Typical conceptual calculation:
+# 127. Three basic permissions
 
 ```text
-Files:       666 & ~umask
-Directories: 777 & ~umask
+r = read
+w = write
+x = execute
+```
+
+Nhưng semantics khác giữa regular file và directory.
+
+Đây là chỗ người mới rất hay nhầm.
+
+---
+
+# 128. Permission trên regular file
+
+### `r`
+
+Cho phép đọc file content.
+
+### `w`
+
+Cho phép modify file content.
+
+### `x`
+
+Cho phép execute file như program/script nếu các điều kiện khác phù hợp.
+
+---
+
+# 129. Permission trên directory
+
+Đây là concept rất quan trọng.
+
+### `r` trên directory
+
+Cho phép đọc/list directory entries theo filesystem semantics.
+
+### `w` trên directory
+
+Cho phép modify directory entries, ví dụ create/remove/rename entries, kết hợp với các conditions khác.
+
+### `x` trên directory
+
+Cho phép traverse/search directory.
+
+Do đó:
+
+> `x` trên directory không có nghĩa "execute directory".
+
+---
+
+# 130. Ví dụ permission string
+
+```text
+-rwxr-x---
+```
+
+Tách:
+
+```text
+-    object type indicator
+rwx  user
+r-x  group
+---  other
+```
+
+User:
+
+```text
+read write execute
+```
+
+Group:
+
+```text
+read execute
+```
+
+Other:
+
+```text
+no permission
+```
+
+---
+
+# 131. Numeric permissions
+
+Values:
+
+```text
+r = 4
+w = 2
+x = 1
+```
+
+Cộng lại.
+
+Ví dụ:
+
+```text
+rw- = 4 + 2 = 6
+r-- = 4
+--- = 0
+```
+
+Nên:
+
+```text
+640
+```
+
+tương ứng:
+
+```text
+rw-r-----
+```
+
+---
+
+# 132. Common modes
+
+Một số examples để đọc, không phải recommendation universal:
+
+```text
+600 = rw-------
+640 = rw-r-----
+644 = rw-r--r--
+700 = rwx------
+750 = rwxr-x---
+755 = rwxr-xr-x
+```
+
+Đừng học thuộc:
+
+```text
+file = 644
+directory = 755
+```
+
+rồi áp dụng mọi nơi.
+
+Desired permissions phụ thuộc security requirement.
+
+---
+
+# 133. Permission evaluation high-level
+
+Với traditional mode, system xác định class applicable dựa trên identity/ownership và checks permission tương ứng.
+
+Điều quan trọng:
+
+> Permission classes không đơn giản là "cộng tất cả quyền user + group + other".
+
+Nếu process identity match owner, owner bits có vai trò tương ứng; behavior chính xác còn có thể bị ảnh hưởng bởi ACLs, SELinux và các mechanisms khác.
+
+Day 2 sẽ học SELinux. Infrastructure_Operations_14_Da…
+
+---
+
+# 134. Permission denied không nhất thiết do `chmod`
+
+Một error:
+
+```text
+Permission denied
+```
+
+có thể liên quan:
+
+```text
+file mode
+directory traversal
+ownership
+group membership
+ACL
+SELinux
+mount option
+application behavior
+```
+
+Day 1 tập trung traditional permissions; Day 2 bổ sung SELinux/filesystem context.
+
+Do đó không nên reflexively:
+
+```bash
+chmod 777 ...
+```
+
+---
+
+# PHẦN XIV — `chmod`
+
+---
+
+# 135. `chmod` là gì?
+
+`chmod` thay đổi file mode bits.
+
+Hai style phổ biến:
+
+### Symbolic
+
+```bash
+chmod u+x script.sh
+```
+
+### Numeric
+
+```bash
+chmod 750 script.sh
+```
+
+---
+
+# 136. Symbolic mode
+
+Components:
+
+```text
+u = user
+g = group
+o = other
+a = all
+```
+
+Operations:
+
+```text
++ add
+- remove
+= set
+```
+
+Ví dụ:
+
+```bash
+chmod g+r report.txt
+```
+
+Thêm group read.
+
+```bash
+chmod o-r report.txt
+```
+
+Bỏ other read.
+
+---
+
+# 137. Numeric mode
+
+```bash
+chmod 640 report.txt
+```
+
+Set:
+
+```text
+user  = rw-
+group = r--
+other = ---
+```
+
+Numeric mode rất rõ nếu bạn biết desired full mode.
+
+Symbolic mode hữu ích khi muốn modify một phần mà không thay các bits khác ngoài scope chỉ định.
+
+---
+
+# 138. Operational risk của `chmod`
+
+Bad troubleshooting:
+
+```text
+Permission denied
+→ chmod 777
+```
+
+Tại sao sai?
+
+Vì:
+
+- chưa xác định root cause;
+- có thể expose sensitive data;
+- cho phép unexpected modification;
+- tạo configuration drift;
+- che giấu incorrect ownership/group design.
+
+---
+
+# PHẦN XV — `chown` VÀ `chgrp`
+
+---
+
+# 139. `chown`
+
+Thay owner:
+
+```bash
+chown alice file.txt
+```
+
+Owner và group:
+
+```bash
+chown alice:appops file.txt
+```
+
+Các operation này thường cần appropriate privilege tùy context.
+
+---
+
+# 140. `chgrp`
+
+Thay group ownership:
+
+```bash
+chgrp appops file.txt
+```
+
+Useful khi owner không cần thay.
+
+---
+
+# 141. Recursive ownership changes
+
+Commands có thể hỗ trợ recursive changes, ví dụ:
+
+```bash
+chown -R ...
+```
+
+Nhưng đây là high-risk pattern trên large/important directory trees.
+
+Trước recursive change cần:
+
+```text
+confirm path
+inspect scope
+understand symlink behavior/options
+capture baseline
+know rollback
+```
+
+Day 1 lab nên giữ scope nhỏ và controlled.
+
+---
+
+# PHẦN XVI — `umask`
+
+---
+
+# 142. `umask` là gì?
+
+`umask` ảnh hưởng permission bits bị loại khỏi requested/default creation mode khi programs tạo new filesystem objects.
+
+Xem:
+
+```bash
+umask
+```
+
+Ví dụ có thể:
+
+```text
+0022
+```
+
+hoặc:
+
+```text
+0002
+```
+
+tùy policy/environment.
+
+---
+
+# 143. Mental model
+
+Thường dạy foundation:
+
+```text
+Files:
+base mode 666
+
+Directories:
+base mode 777
+
+Apply umask
+→ resulting permissions
+```
+
+Ví dụ umask:
+
+```text
+022
+```
+
+Typical result:
+
+```text
+file      644
+directory 755
+```
+
+Nhưng cần hiểu chính xác hơn:
+
+> `umask` removes permission bits from mode requested by application; application có thể request mode restrictive hơn ngay từ đầu.
+
+Vì vậy không nên tin rằng mọi file với umask `022` chắc chắn sẽ là `644`.
+
+---
+
+# 144. Vì sao regular file base thường không có execute?
+
+Vì arbitrary new data file không nên tự động executable.
+
+Do đó basic model sử dụng:
+
+```text
+666
+```
+
+không phải:
+
+```text
+777
+```
+
+cho regular files.
+
+---
+
+# 145. Security implication của umask
+
+Umask quá permissive có thể khiến newly created files accessible rộng hơn yêu cầu.
+
+Umask quá restrictive có thể khiến shared workflow fail.
+
+Do đó desired umask phải theo system/application policy.
+
+---
+
+# PHẦN XVII — `sudo`
+
+---
+
+# 146. `sudo` giải quyết vấn đề gì?
+
+Bạn không muốn mọi administrator:
+
+```text
+login trực tiếp root
+```
+
+cho mọi việc.
+
+`sudo` hỗ trợ controlled execution theo authorization policy.
+
+Mental model:
+
+```text
+User
+ │
+ ▼
+sudo request
+ │
+ ▼
+policy evaluation
+ │
+ ├── denied
+ │
+ └── authorized
+       │
+       ▼
+ privileged command
+```
+
+---
+
+# 147. `sudo` không có nghĩa "become root"
+
+Common use:
+
+```bash
+sudo command
+```
+
+thường execute với target user theo policy, thường là root trong common configuration.
+
+Nhưng `sudo` có thể được cấu hình linh hoạt hơn.
+
+Do đó fundamental concept là:
+
+> Controlled privilege delegation.
+
+---
+
+# 148. Check sudo access
+
+Common command:
+
+```bash
+sudo -l
+```
+
+có thể list permitted sudo commands cho current user, tùy policy/authentication state.
+
+Đây là verification tốt hơn việc cứ thử arbitrary privileged commands.
+
+---
+
+# 149. Least-privilege sudo
+
+Bad design:
+
+```text
+ALL commands as root
+```
+
+khi requirement chỉ là:
+
+```text
+restart one specific service
+```
+
+Better principle:
+
+```text
+Allow the minimum command set required
+```
+
+Tuy nhiên designing secure `sudoers` rules có subtle security details; production rules phải theo organization-approved pattern.
+
+---
+
+# 150. `sudoers`
+
+Sudo configuration thường liên quan:
+
+```text
+/etc/sudoers
+/etc/sudoers.d/
+```
+
+Không nên edit `/etc/sudoers` tùy tiện bằng generic editor.
+
+Common safe mechanism là:
+
+```bash
+visudo
+```
+
+vì nó hỗ trợ validation/locking behavior phù hợp hơn cho sudo configuration.
+
+Trong lab thực tế chúng ta sẽ chỉ thay đổi theo controlled instructions.
+
+---
+
+# 151. Why sudo matters for audit
+
+Sudo usage có thể giúp:
+
+```text
+identify invoking user
+limit command scope
+create audit/log records
+reduce shared root usage
+```
+
+nhưng mức audit chi tiết phụ thuộc system configuration.
+
+---
+
+# 152. Dangerous misconception
+
+```text
+sudo command succeeded
+```
+
+không có nghĩa:
+
+```text
+change authorized
+```
+
+Nhắc lại:
+
+```text
+Technical privilege
+≠
+Operational authorization
+```
+
+---
+
+# PHẦN XVIII — SSH FUNDAMENTALS
+
+---
+
+# 153. SSH là gì?
+
+`SSH` — Secure Shell — là protocol/tool family được dùng phổ biến để secure remote administration.
+
+Typical flow:
+
+```text
+Admin workstation
+      │
+      │ SSH
+      ▼
+Linux server
+```
+
+SSH cung cấp protected channel qua insecure network.
+
+---
+
+# 154. SSH client và server
+
+### Client
+
+Initiates connection.
+
+Ví dụ command:
+
+```bash
+ssh user@host
+```
+
+### Server
+
+Remote system chạy SSH server implementation/service.
+
+On many Linux systems this is associated with OpenSSH server and `sshd`.
+
+---
+
+# 155. TCP port
+
+SSH mặc định thường sử dụng:
+
+```text
+TCP/22
+```
+
+Nhưng administrator có thể configure service trên port khác.
+
+Vì vậy:
+
+> `SSH = TCP/22` là default association, không phải universal guarantee.
+
+---
+
+# 156. SSH workflow
+
+High-level:
+
+```text
+1. Establish network connection
+2. Negotiate SSH protocol/cryptography
+3. Verify server identity
+4. Authenticate client/user
+5. Establish session/channel
+6. Apply OS authorization
+```
+
+Điểm cần nhớ:
+
+> Authentication không phải bước duy nhất.
+
+---
+
+# 157. Server identity / Host key
+
+Khi kết nối SSH, client cần xác định server mà nó nói chuyện có expected identity hay không.
+
+Host key giúp nhận diện server.
+
+Bạn có thể gặp:
+
+```text
+The authenticity of host ... can't be established
+```
+
+lần đầu kết nối.
+
+Hoặc:
+
+```text
+REMOTE HOST IDENTIFICATION HAS CHANGED
+```
+
+khi recorded host identity khác.
+
+---
+
+# 158. Không bypass host-key warning vô điều kiện
+
+Host key mismatch có thể xuất hiện vì:
+
+```text
+server rebuilt
+host key rotated
+DNS/IP reused
+legitimate infrastructure change
+```
+
+nhưng cũng có thể là security concern.
+
+Do đó không nên chỉ xóa entry rồi tiếp tục mà không xác minh.
+
+Workflow:
+
+```text
+Stop
+→ Verify target identity
+→ Check approved change/rebuild
+→ Confirm trusted fingerprint/source
+→ Update known host information appropriately
+```
+
+---
+
+# 159. SSH user authentication
+
+Common methods có thể gồm:
+
+```text
+password
+public-key
+keyboard-interactive
+certificate-based mechanisms
+```
+
+tùy server configuration.
+
+Day 1 tập trung mạnh vào SSH key management.
+
+---
+
+# PHẦN XIX — SSH PUBLIC-KEY AUTHENTICATION
+
+---
+
+# 160. Key pair
+
+Asymmetric key pair gồm:
+
+```text
+Private key
+Public key
+```
+
+Private key:
+
+```text
+must remain secret
+```
+
+Public key:
+
+```text
+can be provisioned to authorized target
+```
+
+---
+
+# 161. Mental model
+
+```text
+Admin Workstation
+──────────────────────
+Private key
+     │
+     │ proves possession
+     ▼
+
+SSH authentication
+
+     ▲
+     │
+Authorized public key
+──────────────────────
+Linux Server
+```
+
+Private key không được gửi lên server chỉ để login thông thường.
+
+---
+
+# 162. SSH private key không phải password file
+
+Private key là cryptographic private material.
+
+Nếu attacker lấy được unprotected private key và các controls khác không ngăn được, attacker có thể impersonate key holder trong relevant contexts.
+
+Do đó bảo vệ private key rất quan trọng.
+
+---
+
+# 163. Passphrase
+
+SSH private key có thể được encrypt/protected bằng passphrase tùy key setup.
+
+Passphrase giúp giảm risk khi key file bị đánh cắp.
+
+Nhưng enterprise implementation có thể còn dùng:
+
+```text
+agent
+hardware-backed key
+certificate
+centralized access solution
+```
+
+Day 1 tập trung basic key handling.
+
+---
+
+# 164. Public key placement
+
+Trên common OpenSSH user configuration, authorized keys thường liên quan:
+
+```text
+~/.ssh/authorized_keys
+```
+
+nhưng exact server behavior có thể thay đổi theo `sshd` configuration.
+
+Không nên tuyệt đối hóa path này cho mọi organization.
+
+---
+
+# 165. File ownership và mode matters
+
+SSH servers thường enforce security checks đối với key-related files/directories để tránh unauthorized users sửa authentication material.
+
+Typical concern:
+
+```text
+Who owns ~/.ssh?
+Who can write authorized_keys?
+```
+
+Exact accepted modes/settings phải được verify theo server configuration/OpenSSH policy.
+
+Điểm conceptual:
+
+> Authentication material không được writable bởi unauthorized identities.
+
+---
+
+# 166. SSH key generation
+
+Common modern OpenSSH command có thể là:
+
+```bash
+ssh-keygen
+```
+
+Algorithm selection, key size, hardware-backed key hoặc policy phải theo organizational security standard.
+
+Day 1 không nên tự chọn thuật toán "vì thấy trên Internet" nếu enterprise policy đã quy định.
+
+---
+
+# 167. Key fingerprint
+
+Fingerprint là compact identifier derived from public key.
+
+Nó hữu ích để:
+
+```text
+compare
+verify
+inventory
+identify expected key
+```
+
+thay vì nhìn nguyên public key blob.
+
+---
+
+# 168. Key lifecycle
+
+Secure key management không kết thúc sau `ssh-keygen`.
+
+Lifecycle:
+
+```text
+Generate
+  ↓
+Protect
+  ↓
+Register/Deploy
+  ↓
+Verify
+  ↓
+Use
+  ↓
+Review
+  ↓
+Rotate
+  ↓
+Revoke/remove
+```
+
+Nếu employee rời team nhưng public key vẫn tồn tại trên servers, access governance có vấn đề.
+
+---
+
+# PHẦN XX — SECURE ADMINISTRATIVE ACCESS
+
+---
+
+# 169. Secure administrative access là một chain
+
+Một secure Linux administrative workflow thường không dựa vào một control duy nhất.
+
+Ví dụ:
+
+```text
+Approved administrator
+        │
+        ▼
+Approved workstation
+        │
+        ▼
+Approved network path
+        │
+        ▼
+SSH server identity verified
+        │
+        ▼
+Strong authentication
+        │
+        ▼
+Named Linux account
+        │
+        ▼
+Least privilege
+        │
+        ▼
+sudo only when required
+        │
+        ▼
+Audit/evidence
+```
+
+---
+
+# 170. Named account vs shared admin account
+
+Named identity có lợi thế audit:
+
+```text
+Alice performed X
+Bob performed Y
+```
+
+Shared account:
+
+```text
+admin performed X
+```
+
+làm attribution khó hơn.
+
+Organization có thể có exception/break-glass patterns, nhưng normal administration nên ưu tiên traceable identity theo policy.
+
+---
+
+# 171. Root login
+
+Direct root login qua SSH thường bị hạn chế trong security-conscious environments, nhưng exact policy phụ thuộc organization.
+
+Mental model được ưu tiên:
+
+```text
+Authenticate as named user
+→ elevate with sudo when authorized
+```
+
+thay vì:
+
+```text
+everyone uses root
+```
+
+---
+
+# 172. Secure access does not mean “SSH works”
+
+Bạn cần verify:
+
+```text
+Correct server?
+Correct account?
+Correct key?
+Correct privilege?
+Denied actions actually denied?
+Audit trail generated?
+```
+
+Ví dụ sau login:
+
+```bash
+hostname
+whoami
+id
+```
+
+---
+
+# PHẦN XXI — TROUBLESHOOTING METHODOLOGY CHO DAY 1
+
+Đây là **kiến thức bổ sung**, nhưng nó kết nối tất cả syllabus topics.
+
+---
+
+# 173. Không troubleshoot bằng random changes
+
+Bad flow:
+
+```text
+SSH failed
+→ chmod 777
+→ restart service
+→ change firewall
+→ recreate user
+→ regenerate key
+```
+
+Sau vài phút:
+
+- bạn không biết root cause;
+- nhiều state đã thay đổi;
+- rollback khó;
+- audit evidence tệ;
+- có thể tạo thêm failure.
+
+---
+
+# 174. Structured troubleshooting
+
+Dùng flow:
+
+```text
+1. Define symptom precisely
+2. Determine scope
+3. Gather current state
+4. Compare expected state
+5. Form hypothesis
+6. Run low-risk test
+7. Narrow layer
+8. Change only when justified
+9. Verify
+10. Document
+```
+
+---
+
+# 175. Ví dụ: User nói "SSH không được"
+
+Đừng vội kiểm tra keys.
+
+Đầu tiên phân loại symptom.
+
+### Case A
+
+```text
+No route to host
+```
+
+Khả năng tập trung network/routing.
+
+### Case B
+
+```text
+Connection timed out
+```
+
+Có thể network/firewall/service path.
+
+### Case C
+
+```text
+Connection refused
+```
+
+Target reachable nhưng port/service path có vấn đề.
+
+### Case D
+
+```text
+Permission denied (publickey)
+```
+
+Bạn đã đi xa hơn trong connection process; investigation nên tập trung authentication/account/key/policy.
+
+### Case E
+
+```text
+Host key verification failed
+```
+
+Client-side trust/server identity issue.
+
+Điểm chính:
+
+> Exact error quyết định next troubleshooting branch.
+
+---
+
+# 176. Troubleshooting permission issue
+
+Symptom:
+
+```text
+Permission denied
+```
+
+Investigation order có thể:
+
+```text
+1. Confirm user identity
+2. Confirm target path
+3. Inspect object owner/group
+4. Inspect object mode
+5. Inspect parent directory traversal permissions
+6. Check group memberships
+7. Consider ACL/SELinux if traditional mode looks correct
+8. Escalate if outside Day 1/scope
+```
+
+Day 1 dừng chủ yếu ở traditional user/group/mode analysis.
+
+Day 2 sẽ bổ sung SELinux. Infrastructure_Operations_14_Da…
+
+---
+
+# PHẦN XXII — VERIFICATION MINDSET
+
+---
+
+# 177. Verification phải độc lập với action
+
+Nếu chạy:
+
+```bash
+chmod 640 file.txt
+```
+
+verification nên là:
+
+```bash
+stat file.txt
+```
+
+hoặc:
+
+```bash
+ls -l file.txt
+```
+
+Tốt hơn nữa nếu access requirement quan trọng:
+
+```text
+test as intended user/group
+```
+
+---
+
+# 178. Positive và negative verification
+
+Security control không chỉ cần:
+
+```text
+Authorized user succeeds
+```
+
+mà còn:
+
+```text
+Unauthorized user fails
+```
+
+Ví dụ:
+
+```text
+ops1 can read report
+guest cannot read report
+```
+
+Đây là lý do Assignment của Day 1 yêu cầu verify cả authorized và denied access. Infrastructure_Operations_14_Da…
+
+---
+
+# 179. State verification vs functional verification
+
+Ví dụ permission:
+
+### State
+
+```bash
+ls -l file
+```
+
+cho thấy:
+
+```text
+-rw-r-----
+```
+
+### Functional
+
+Test user thực sự có/không có access.
+
+Cả hai hữu ích.
+
+State đúng chưa chắc functionality đúng nếu dependency khác ảnh hưởng.
+
+---
+
+# PHẦN XXIII — EVIDENCE MODEL CHO DAY 1
+
+---
+
+# 180. Một evidence record tốt
+
+Có thể theo mẫu:
+
+```text
+Ticket/Lab ID:
+Timestamp:
+Timezone:
+Hostname:
+Environment:
+Operator:
+Objective:
+Pre-state:
+Command:
+Output:
+Post-state:
+Verification:
+Result:
+Notes:
+```
+
+Không nhất thiết mọi command đều cần full form này, nhưng critical administrative change nên có traceability.
+
+---
+
+# 181. Evidence cho users/groups
+
+Useful examples:
+
+```bash
+id <user>
+getent passwd <user>
+getent group <group>
+```
+
+Nhưng redact/scope appropriately nếu output có unnecessary sensitive information.
+
+---
+
+# 182. Evidence cho permissions
+
+```bash
+ls -ld <path>
+stat <path>
+```
+
+Nếu path nằm sâu:
+
+```text
+/opt/app/config/file
+```
+
+có thể cần evidence của parent directory permissions nếu troubleshooting traversal.
+
+---
+
+# 183. Evidence cho sudo
+
+```bash
+sudo -l
+```
+
+và controlled positive/negative test theo lab design.
+
+Không cần expose password trong screenshot/recording.
+
+---
+
+# 184. Evidence cho SSH
+
+Có thể gồm:
+
+```text
+source workstation identity
+target hostname
+user
+public-key fingerprint
+successful login verification
+denied test
+timestamp
+```
+
+Không bao gồm private key.
+
+---
+
+# PHẦN XXIV — COMMON MISTAKES CỦA NGƯỜI MỚI
+
+---
+
+# 185. Mistake: cứ lỗi permission là `chmod 777`
+
+Tại sao nguy hiểm:
+
+```text
+over-permission
+data modification risk
+security exposure
+configuration drift
+root cause masked
+```
+
+Better:
+
+```text
+identify required identity
+inspect owner/group/mode
+grant minimum needed
+verify
+```
+
+---
+
+# 186. Mistake: dùng root cho mọi việc
+
+Hậu quả:
+
+```text
+large blast radius
+weak accountability
+accidental destructive changes
+least-privilege violation
+```
+
+---
+
+# 187. Mistake: nhầm `/` và `/root`
+
+```text
+/
+```
+
+là filesystem root.
+
+```text
+/root
+```
+
+là directory.
+
+Đây là distinction cơ bản nhưng cực quan trọng.
+
+---
+
+# 188. Mistake: nhầm relative path
+
+Ví dụ:
+
+```bash
+rm logs/*
+```
+
+Nếu current directory khác dự kiến, target khác.
+
+Do đó:
+
+```bash
+pwd
+ls
+```
+
+trước operation quan trọng.
+
+---
+
+# 189. Mistake: nghĩ hidden file được bảo mật
+
+File:
+
+```text
+.secret
+```
+
+không secure chỉ vì có dấu `.`.
+
+Access control đến từ permissions/ownership/security mechanisms, không phải hidden naming.
+
+---
+
+# 190. Mistake: nghĩ `sudo` = authorization
+
+Không.
+
+```text
+sudo capability
+```
+
+là technical privilege.
+
+Ticket/change approval mới là operational authorization theo process.
+
+---
+
+# 191. Mistake: copy private key lên server
+
+Private key phải được bảo vệ phía owner/client theo intended authentication model.
+
+Server nhận authorized public key, không cần private key của user.
+
+---
+
+# 192. Mistake: gặp host-key warning thì bypass
+
+Có thể bỏ qua security signal rất quan trọng.
+
+Phải verify identity/change context.
+
+---
+
+# 193. Mistake: chỉ test success
+
+Security configuration cần cả:
+
+```text
+allowed path succeeds
+denied path fails
+```
+
+---
+
+# 194. Mistake: change rồi mới nghĩ rollback
+
+Rollback phải được nghĩ **trước** change.
+
+Đặc biệt production.
+
+---
+
+# PHẦN XXV — ESCALATION BOUNDARY CHO DAY 1
+
+---
+
+# 195. L1 có thể xử lý đến đâu?
+
+Không có universal boundary.
+
+Nhưng trong training model, L1 nên có khả năng:
+
+```text
+identify host/user
+inspect basic files
+navigate CLI
+collect permissions/ownership evidence
+capture SSH error
+verify known runbook items
+perform pre-approved basic actions
+```
+
+Nếu required change vượt scope → escalate.
+
+---
+
+# 196. L2 nên làm gì?
+
+L2 có thể được expected:
+
+```text
+analyze permission chains
+analyze group membership
+troubleshoot SSH key access
+implement approved ownership/mode corrections
+manage controlled users/groups
+implement approved sudo configuration
+```
+
+nhưng vẫn không vượt organization authorization.
+
+---
+
+# 197. Escalate ngay nếu
+
+Ví dụ:
+
+```text
+Suspected security breach
+Unknown privileged account
+Unexpected SSH key
+Production access outside ticket
+Potential data loss
+Configuration appears tampered
+Need to weaken security controls
+Need direct root credential not provisioned
+Change requires security/network/platform owner
+```
+
+---
+
+# PHẦN XXVI — CÁCH CÁC CONCEPT DAY 1 KẾT NỐI VỚI NHAU
+
+Đây là phần cực kỳ quan trọng để tránh học rời rạc.
+
+---
+
+# 198. Scenario: cấp access cho operations user
+
+Requirement:
+
+> Một engineer cần đọc application reports và thực hiện một approved administrative operation.
+
+Bạn không bắt đầu với `chmod`.
+
+Bạn bắt đầu từ governance:
+
+```text
+Access request
+      ↓
+Approval
+      ↓
+Identify target server
+      ↓
+Verify environment
+      ↓
+Create/identify named user
+      ↓
+Assign correct group
+      ↓
+Set filesystem ownership/mode
+      ↓
+Configure minimum sudo if required
+      ↓
+Deploy SSH public key
+      ↓
+Test authorized access
+      ↓
+Test denied access
+      ↓
+Collect evidence
+```
+
+Toàn bộ Day 1 nằm trong scenario này.
+
+---
+
+# 199. Dependency chain
+
+Một user không đọc được file có thể do:
+
+```text
+SSH login
+     │
+     ▼
+Linux account
+     │
+     ▼
+Group membership
+     │
+     ▼
+Directory traversal
+     │
+     ▼
+Object ownership
+     │
+     ▼
+Mode permissions
+     │
+     ▼
+Additional security controls
+```
+
+Bạn cần troubleshoot theo chain.
+
+---
+
+# 200. Operational control chain
+
+Tương tự, một successful change cần:
+
+```text
+Authorization
+     ↓
+Correct system
+     ↓
+Correct identity
+     ↓
+Correct command
+     ↓
+Minimal scope
+     ↓
+Successful execution
+     ↓
+Verification
+     ↓
+Evidence
+```
+
+Nếu một mắt xích thiếu, operation chưa complete về mặt enterprise.
+
+---
+
+# PHẦN XXVII — DAY 1 THEORY COMMAND REFERENCE
+
+Các command dưới đây là **reference cho concepts**, chưa phải lab procedure hoàn chỉnh.
+
+| Mục đích                     | Command điển hình         |
+| ---------------------------- | ------------------------- |
+| Current user                 | `whoami`                  |
+| Identity/groups              | `id`                      |
+| Host information             | `hostname`, `hostnamectl` |
+| OS information               | `cat /etc/os-release`     |
+| Kernel                       | `uname -r`                |
+| Working directory            | `pwd`                     |
+| List files                   | `ls`, `ls -l`, `ls -la`   |
+| Change directory             | `cd`                      |
+| Create directory             | `mkdir`                   |
+| Create/update file timestamp | `touch`                   |
+| Copy                         | `cp`                      |
+| Move/rename                  | `mv`                      |
+| Remove                       | `rm`, `rmdir`             |
+| View content                 | `cat`                     |
+| Search text                  | `grep`                    |
+| Search filesystem            | `find`                    |
+| File metadata                | `stat`                    |
+| User lookup                  | `getent passwd <user>`    |
+| Group lookup                 | `getent group <group>`    |
+| Permission change            | `chmod`                   |
+| Owner change                 | `chown`                   |
+| Group owner change           | `chgrp`                   |
+| Current umask                | `umask`                   |
+| Check sudo privileges        | `sudo -l`                 |
+| Manual                       | `man <command>`           |
+| Bash builtin help            | `help <builtin>`          |
+| Basic command help           | `<command> --help`        |
+| Command type                 | `type <command>`          |
+| History                      | `history`                 |
+| SSH client                   | `ssh user@host`           |
+| SSH key utility              | `ssh-keygen`              |
+
+---
+
+# PHẦN XXVIII — READ-ONLY VS CHANGE COMMAND REFERENCE
+
+Đây là classification operational, không phải absolute security rating.
+
+### Chủ yếu inspection/read-only
+
+```bash
+whoami
+id
+hostname
+hostnamectl
+uname -r
+pwd
+ls
+stat
+cat
+getent
+umask
+sudo -l
+man
+```
+
+Lưu ý: một số command có options/modes khác hoặc access side effects tùy system; bảng này nói về common usage Day 1.
+
+### Thay đổi state
+
+```bash
+mkdir
+touch
+cp
+mv
+chmod
+chown
+chgrp
+useradd
+usermod
+groupadd
+ssh-keygen
+```
+
+### Destructive hoặc cần extra care
+
+```bash
+rm
+userdel
+groupdel
+```
+
+Và recursive variants cần đặc biệt thận trọng.
+
+---
+
+# PHẦN XXIX — MENTAL MODEL VỀ SECURITY DAY 1
+
+Bạn nên nhớ bốn tầng:
+
+```text
+IDENTITY
+Who are you?
+    │
+    ▼
+AUTHENTICATION
+Can you prove it?
+    │
+    ▼
+AUTHORIZATION
+What are you allowed to do?
+    │
+    ▼
+AUDIT
+Can we prove what happened?
+```
+
+Linux mapping:
+
+```text
+Identity
+→ user / UID / group
+
+Authentication
+→ SSH key / other approved method
+
+Authorization
+→ permissions / groups / sudo
+
+Audit/Evidence
+→ logs / command output / ticket / evidence
+```
+
+Đây là một trong những mental models quan trọng nhất của Day 1.
+
+---
+
+# PHẦN XXX — MENTAL MODEL VỀ FILE ACCESS
+
+Khi user hỏi:
+
+> "Tại sao tôi không mở được file?"
+
+Hãy nghĩ:
+
+```text
+Who am I?
+    ↓
+What UID/GIDs do I have?
+    ↓
+What path am I accessing?
+    ↓
+Can I traverse parent directories?
+    ↓
+Who owns the target?
+    ↓
+What are its mode bits?
+    ↓
+Are there additional controls?
+    ↓
+What exact operation is attempted?
+```
+
+Không nhảy ngay vào:
+
+```text
+chmod
+```
+
+---
+
+# PHẦN XXXI — MENTAL MODEL VỀ SSH
+
+Khi SSH fail:
+
+```text
+Can I resolve/reach target?
+        ↓
+Can I establish TCP connection?
+        ↓
+Is SSH server responding?
+        ↓
+Does server identity match?
+        ↓
+Is user valid?
+        ↓
+Does authentication succeed?
+        ↓
+Does account/session authorization allow login?
+```
+
+Ở Day 1 bạn tập trung identity/authentication/access.
+
+Day 2 sẽ bổ sung sâu hơn network/firewall/service/log troubleshooting. Infrastructure_Operations_14_Da…
+
+---
+
+# PHẦN XXXII — MENTAL MODEL VỀ SUDO
+
+Khi:
+
+```text
+sudo command
+```
+
+fail, đừng mặc định password sai.
+
+Potential questions:
+
+```text
+Is current user correct?
+Does sudo policy authorize operation?
+Is exact command/path allowed?
+Is target user correct?
+Is policy syntax valid?
+Is authentication requirement satisfied?
+```
+
+Và nhớ:
+
+```text
+Denied by policy
+```
+
+có thể là **correct security behavior**, không phải system malfunction.
+
+---
+
+# PHẦN XXXIII — DAY 1 THEORY: 15 CORE RULES CẦN NHỚ
+
+1. **Biết command không đồng nghĩa được phép chạy command.**
+
+2. **Technical privilege không đồng nghĩa operational authorization.**
+
+3. **Verify target trước khi modify.**
+
+4. **Capture current state trước khi change.**
+
+5. **Ưu tiên read-only investigation trước state-changing actions.**
+
+6. **Chỉ thay đổi minimum cần thiết.**
+
+7. **Least privilege áp dụng cho user, group, permissions, `sudo` và SSH.**
+
+8. **Authentication và authorization là hai thứ khác nhau.**
+
+9. **Successful command không tự động có nghĩa successful operation.**
+
+10. **Permission denied không tự động có nghĩa phải `chmod`.**
+
+11. **Private SSH key phải được bảo vệ và không đưa vào evidence.**
+
+12. **Host-key warning cần được investigate, không bypass tùy tiện.**
+
+13. **Security control phải test cả allowed và denied behavior.**
+
+14. **Rollback phải được nghĩ trước change, không phải sau incident.**
+
+15. **Một escalation tốt phải chuyển cả context và evidence, không chỉ chuyển symptom.**
+
+---
+
+# PHẦN XXXIV — KNOWLEDGE CHECK CHO MODULE LÝ THUYẾT
+
+Tôi chưa đưa đáp án để bạn có thể tự kiểm tra sau.
+
+### Foundation
+
+**Câu 1.** Tại sao một administrator có quyền `sudo` vẫn có thể không được phép thực hiện một change?
+
+**Câu 2.** Sự khác nhau giữa technical capability và operational authorization là gì?
+
+**Câu 3.** Vì sao phải phân biệt production và non-production?
+
+**Câu 4.** SOP và runbook khác nhau thế nào?
+
+**Câu 5.** Một escalation tốt phải chứa những thông tin nào?
+
+### Linux architecture
+
+**Câu 6.** Linux kernel khác Linux distribution như thế nào?
+
+**Câu 7.** Shell và terminal khác nhau ra sao?
+
+**Câu 8.** `/` khác `/root` như thế nào?
+
+**Câu 9.** `uname -r` và `/etc/os-release` cung cấp hai loại thông tin gì?
+
+### CLI
+
+**Câu 10.** Absolute path và relative path khác nhau như thế nào?
+
+**Câu 11.** Vì sao `pwd` có giá trị trước một destructive operation?
+
+**Câu 12.** `>` và `>>` khác nhau thế nào?
+
+**Câu 13.** Pipe `|` làm gì?
+
+**Câu 14.** `stdin`, `stdout`, `stderr` là gì?
+
+### Permissions
+
+**Câu 15.** `640` tương ứng permission string nào?
+
+**Câu 16.** `r`, `w`, `x` trên directory khác regular file như thế nào?
+
+**Câu 17.** Tại sao `chmod 777` không phải giải pháp tốt cho permission issue?
+
+**Câu 18.** `chown`, `chgrp`, `chmod` khác nhau thế nào?
+
+**Câu 19.** `umask` có vai trò gì?
+
+### Security
+
+**Câu 20.** Authentication và authorization khác nhau thế nào?
+
+**Câu 21.** Tại sao SSH private key không được đặt vào evidence package?
+
+**Câu 22.** Tại sao phải test cả allowed access và denied access?
+
+**Câu 23.** `sudo -l` giúp xác minh điều gì?
+
+**Câu 24.** Tại sao SSH host-key mismatch không nên bị bỏ qua tự động?
+
+### Scenario
+
+**Câu 25.** User báo `Permission denied` khi đọc file. Bạn sẽ điều tra theo thứ tự nào?
+
+**Câu 26.** SSH báo `Permission denied (publickey)`. Bạn ưu tiên điều tra networking hay authentication? Tại sao?
+
+**Câu 27.** Bạn phát hiện file application đang có `777`. Application vẫn hoạt động. Đây có phải trạng thái tốt không? Vì sao?
+
+**Câu 28.** Ticket chỉ approve quyền đọc report nhưng user hiện có unrestricted `sudo`. Bạn đánh giá vấn đề gì?
+
+**Câu 29.** Bạn vừa chạy `chmod`, command không báo lỗi. Bạn đã có thể close ticket chưa?
+
+**Câu 30.** Bạn phát hiện system state khác baseline nhưng không rõ ai thay đổi. Bạn nên tự sửa ngay về baseline hay trước tiên làm gì?
+
+---
+
+# PHẦN XXXV — INTERVIEW / OPERATIONS SCENARIOS
+
+## Scenario 1 — Permission issue
+
+User báo:
+
+```text
+"I cannot read /srv/reports/report.csv"
+```
+
+Một câu trả lời operations tốt sẽ không bắt đầu bằng:
+
+```bash
+chmod 777 /srv/reports/report.csv
+```
+
+Mà bắt đầu bằng:
+
+```text
+Identity?
+Group memberships?
+Parent directory permissions?
+File ownership?
+File mode?
+Expected access?
+Approved access?
+Additional controls?
+```
+
+---
+
+## Scenario 2 — SSH failure
+
+User:
+
+```text
+ssh ops1@server
+Permission denied (publickey)
+```
+
+Bạn phải hiểu đây khác:
+
+```text
+Connection timed out
+```
+
+vì failure xảy ra ở layer khác.
+
+---
+
+## Scenario 3 — Emergency request
+
+Application owner gọi trực tiếp:
+
+> "Cho tôi root access nhanh để fix production."
+
+Bạn technically có thể cấp.
+
+Nhưng operationally phải kiểm tra:
+
+```text
+authorization
+emergency access process
+ticket
+approval
+scope
+expiry
+audit
+```
+
+Không dùng urgency để bypass controls tùy ý.
+
+---
+
+## Scenario 4 — Unknown SSH key
+
+Bạn thấy một key lạ trong:
+
+```text
+authorized_keys
+```
+
+Không nên:
+
+```text
+delete immediately
+```
+
+nếu chưa biết impact, trừ khi approved incident procedure yêu cầu.
+
+Bạn cần:
+
+```text
+capture evidence
+identify owner
+check expected baseline
+review authorized change
+escalate security concern
+```
+
+---
+
+## Scenario 5 — Recursive ownership
+
+Someone proposes:
+
+```bash
+chown -R appuser:appgroup /opt/app
+```
+
+Bạn phải hỏi:
+
+```text
+How many objects?
+Expected ownership?
+Symlinks?
+Application dependencies?
+Current baseline?
+Rollback?
+Maintenance impact?
+Authorization?
+```
+
+---
+
+# PHẦN XXXVI — CHEAT SHEET DAY 1 THEORY
+
+## Infrastructure Operations
+
+```text
+Observe before modify
+Verify target
+Know environment
+Use least privilege
+Follow SOP/runbook
+Have authorization
+Have rollback
+Verify after change
+Collect evidence
+Escalate when outside scope
+```
+
+## Linux identity
+
+```bash
+whoami
+id
+groups
+getent passwd <user>
+getent group <group>
+```
+
+## System identity
+
+```bash
+hostname
+hostnamectl
+cat /etc/os-release
+uname -r
+```
+
+## Navigation
+
+```bash
+pwd
+ls
+ls -la
+cd
+```
+
+Key path concepts:
+
+```text
+/    root
+.    current directory
+..   parent
+~    home
+```
+
+## Files
+
+```bash
+touch
+mkdir
+cp
+mv
+rm
+rmdir
+stat
+```
+
+## Text/search foundation
+
+```bash
+cat
+grep
+find
+```
+
+## Streams
+
+```text
+stdin  = 0
+stdout = 1
+stderr = 2
+```
+
+```bash
+|
+>
+>>
+<
+2>
+```
+
+## Permissions
+
+```text
+r = 4
+w = 2
+x = 1
+```
+
+```bash
+chmod
+chown
+chgrp
+umask
 ```
 
 Example:
 
 ```text
-umask 022
-file → 644
-dir  → 755
+640 = rw-r-----
+750 = rwxr-x---
 ```
-
----
 
 ## Privilege
 
 ```bash
 sudo -l
-visudo
+sudo <authorized-command>
 ```
 
-Mental model:
+Principle:
 
 ```text
-Named account
-→ least privilege
-→ sudo only when required
-→ evidence
+sudo capability ≠ change authorization
 ```
-
----
 
 ## SSH
 
+Default association:
+
+```text
+TCP/22
+```
+
+Basic client:
+
 ```bash
 ssh user@host
-ssh -v user@host
+```
+
+Key utility:
+
+```bash
 ssh-keygen
 ```
 
-Objects:
+Typical authorized-key location:
 
 ```text
-Private key
-Public key
-Host key
-known_hosts
-authorized_keys
+~/.ssh/authorized_keys
 ```
 
-Typical trust flow:
+Security rule:
 
 ```text
-Verify server
-→ Authenticate user
-→ Establish session
-→ Elevate only if authorized
+Private key → protect
+Public key  → deploy where authorized
 ```
 
 ---
 
-## Evidence
+# PHẦN XXXVII — DAY 1 LÝ THUYẾT COMPLETION CHECKLIST
 
-Capture:
+Sau khi học kỹ module này, bạn nên tự tin tick được toàn bộ:
 
-```text
-Timestamp
-Hostname
-Username
-Command
-Output
-Purpose
-Result
-Ticket/change reference
-```
+### Infrastructure Operations
 
-Never capture:
+- [ ] Tôi giải thích được trách nhiệm cơ bản của Infrastructure Operations.
+- [ ] Tôi hiểu L1/L2 boundary phụ thuộc organization.
+- [ ] Tôi phân biệt technical capability và operational authorization.
+- [ ] Tôi hiểu operational safety.
+- [ ] Tôi phân biệt production và non-production.
+- [ ] Tôi hiểu change authorization.
+- [ ] Tôi hiểu least privilege.
+- [ ] Tôi phân biệt SOP và runbook.
+- [ ] Tôi hiểu escalation tốt cần context và evidence.
+- [ ] Tôi hiểu access-management lifecycle.
+- [ ] Tôi hiểu authentication khác authorization.
+- [ ] Tôi hiểu configuration baseline.
+- [ ] Tôi hiểu asset inventory.
+- [ ] Tôi hiểu audit evidence.
+- [ ] Tôi biết những thông tin không được đưa vào evidence.
+- [ ] Tôi hiểu lab readiness.
 
-```text
-Password
-Private key
-Token
-Secret
-```
+### Linux foundation
+
+- [ ] Tôi giải thích được Linux architecture ở high level.
+- [ ] Tôi giải thích được kernel.
+- [ ] Tôi phân biệt kernel và Linux distribution.
+- [ ] Tôi phân biệt shell và terminal.
+- [ ] Tôi hiểu RHEL nằm ở đâu trong Linux ecosystem.
+- [ ] Tôi biết các directory cơ bản `/etc`, `/home`, `/root`, `/var`, `/tmp`, `/usr`, `/opt`, `/boot`, `/dev`, `/proc`, `/sys`.
+- [ ] Tôi phân biệt `/` và `/root`.
+- [ ] Tôi hiểu current working directory.
+- [ ] Tôi phân biệt absolute và relative path.
+- [ ] Tôi hiểu `.`, `..`, `~`.
+- [ ] Tôi hiểu basic file/directory operations.
+- [ ] Tôi hiểu command/options/arguments.
+- [ ] Tôi hiểu quoting cơ bản.
+- [ ] Tôi hiểu `stdin`, `stdout`, `stderr`.
+- [ ] Tôi hiểu pipe.
+- [ ] Tôi hiểu redirection.
+- [ ] Tôi hiểu risk của `>`.
+- [ ] Tôi hiểu command history và security implications.
+- [ ] Tôi biết sử dụng `man`, `--help`, `help`.
+- [ ] Tôi hiểu safe command execution.
+
+### Identity, permissions và secure access
+
+- [ ] Tôi hiểu Linux user/UID.
+- [ ] Tôi hiểu primary/supplementary groups.
+- [ ] Tôi hiểu user owner và group owner.
+- [ ] Tôi đọc được permission string.
+- [ ] Tôi chuyển đổi cơ bản giữa symbolic và numeric permissions.
+- [ ] Tôi hiểu `r/w/x` trên file và directory.
+- [ ] Tôi hiểu chức năng của `chmod`.
+- [ ] Tôi hiểu chức năng của `chown`.
+- [ ] Tôi hiểu chức năng của `chgrp`.
+- [ ] Tôi hiểu `umask`.
+- [ ] Tôi hiểu `sudo` là controlled privilege delegation.
+- [ ] Tôi hiểu least-privilege `sudo`.
+- [ ] Tôi hiểu SSH client/server.
+- [ ] Tôi hiểu SSH host identity.
+- [ ] Tôi hiểu SSH public-key authentication.
+- [ ] Tôi phân biệt private và public key.
+- [ ] Tôi hiểu SSH key lifecycle.
+- [ ] Tôi hiểu secure administrative access.
+- [ ] Tôi hiểu positive và negative access verification.
 
 ---
 
-# MODULE LÝ THUYẾT DAY 1 — COMPLETION CHECKLIST
+# Kết luận Module Lý thuyết Day 1
 
-Bạn có thể xem Module Lý thuyết Day 1 là hoàn thành khi bạn tự giải thích được toàn bộ chuỗi sau mà không cần học thuộc máy móc:
+Nếu phải cô đọng toàn bộ Module Lý thuyết Day 1 thành một operational model duy nhất, hãy nhớ chuỗi này:
 
-- Infrastructure Operations khác với việc đơn thuần biết technical commands như thế nào.
-- Tại sao `L1/L2 boundary` là cả technical boundary lẫn authorization boundary.
-- Tại sao phải xác nhận `hostname`, user, environment và scope trước một change.
-- Khác biệt giữa production, non-production và lab.
-- Khác biệt giữa technical privilege và change authorization.
-- Least privilege được áp dụng vào user, group, permissions, `sudo` và SSH như thế nào.
-- SOP và runbook khác nhau về mục tiêu ra sao.
-- Khi nào nên troubleshoot, rollback hoặc escalate.
-- Authentication và authorization khác nhau như thế nào.
-- Configuration baseline và asset inventory khác nhau như thế nào.
-- Một audit evidence tốt phải chứa context gì và không được chứa secrets gì.
-- Linux kernel, shell, user space và distribution liên hệ với nhau ra sao.
-- RHEL là gì trong Linux ecosystem.
-- Linux filesystem hierarchy bắt đầu từ `/` và các directory quan trọng có vai trò gì.
-- Absolute path và relative path được resolve như thế nào.
-- `stdin`, `stdout`, `stderr`, pipe và redirection hoạt động ra sao.
-- Vì sao `>` khác `>>`.
-- Command history có giá trị và security risk gì.
-- Cách tự sử dụng `man`, `--help` và `help`.
-- UID/GID, primary group và supplementary groups hoạt động thế nào.
-- `rwx` có ý nghĩa khác nhau trên regular file và directory như thế nào.
-- Tại sao parent directory permissions có thể gây `Permission denied`.
-- Cách đọc `chmod 750`, `chmod 640` và symbolic modes.
-- `chown` và `chgrp` thay đổi metadata gì.
-- `umask` thực chất là permission mask chứ không đơn giản là một "default permission".
-- Tại sao named account + `sudo` tốt hơn shared root access về least privilege và auditability.
-- Tại sao `sudoers` cần được kiểm soát và `visudo` quan trọng.
-- SSH client/server flow hoạt động qua các phase nào.
-- Host authentication và user authentication khác nhau như thế nào.
-- Private key, public key, host key, `known_hosts` và `authorized_keys` hoàn toàn khác chức năng ra sao.
-- Tại sao SSH host-key warning không được xử lý bằng cách xóa entry một cách máy móc.
-- Tại sao phải test cả **allowed access** và **denied access**.
-- Tại sao mọi configuration change phải đi cùng verification, evidence và rollback/escalation thinking.
+```text
+                 GOVERNANCE
+                     │
+        ┌────────────┴────────────┐
+        │                         │
+ Authorization              Support Scope
+        │                         │
+        └────────────┬────────────┘
+                     ▼
+              IDENTIFY TARGET
+                     │
+                     ▼
+               OBSERVE STATE
+                     │
+                     ▼
+              UNDERSTAND ACCESS
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+        User       Group    Permissions
+          │          │          │
+          └──────────┴──────────┘
+                     │
+                     ▼
+             AUTHENTICATION
+                  SSH
+                     │
+                     ▼
+              AUTHORIZATION
+           permissions + sudo
+                     │
+                     ▼
+           MINIMUM SAFE CHANGE
+                     │
+                     ▼
+                VERIFY
+            ┌────────┴─────────┐
+            ▼                  ▼
+         Allowed             Denied
+         succeeds            fails
+            │                  │
+            └────────┬─────────┘
+                     ▼
+                 EVIDENCE
+                     │
+                     ▼
+          CLOSE / ROLLBACK / ESCALATE
+```
 
-Đó là toàn bộ **Module Lý thuyết Day 1** theo phạm vi `Concept/Lecture` của syllabus, được mở rộng tới mức operational foundation cần thiết nhưng chưa lấn sang nội dung chuyên sâu của Day 2. Infrastructure_Operations_14_Da…
+Đó chính xác là nền tảng mà syllabus Day 1 muốn xây dựng trước khi Day 2 chuyển sang administration sâu hơn như `dnf/yum/rpm`, processes, `systemd`, SELinux, `firewalld`, networking, storage, logs, Bash, `cron` và backup/restore. Infrastructure_Operations_14_Da…
 
-Bước tiếp theo của Day 1 là **Module Thực hành**, nơi toàn bộ kiến thức trên sẽ được chuyển thành một lab Linux/RHEL có kiểm soát: chuẩn bị workstation và evidence repository → system inventory → CLI/filesystem → users/groups → permissions/`umask` → least-privilege `sudo` → SSH key authentication → positive/negative access tests → evidence package → cleanup/rollback.
+Quan trọng nhất: **Day 1 không phải bài học “Linux commands cơ bản” đơn thuần.** Nó là bài học về cách một Infrastructure Operations engineer sử dụng Linux **đúng system, đúng identity, đúng quyền, đúng authorization, với minimum necessary change, có verification, evidence, rollback và escalation**. Đây cũng phù hợp với định hướng chung của syllabus là xây `operational readiness` thông qua hands-on, verification evidence và controlled troubleshooting chứ không tuyên bố advanced product mastery chỉ sau khóa học ngắn. Infrastructure_Operations_14_Da…

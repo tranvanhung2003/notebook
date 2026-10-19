@@ -1,514 +1,522 @@
-# Day 1 — Module Thực hành: Infrastructure Operations & Linux Administration Foundations
+# Day 1 — Module Thực hành
 
-Theo syllabus, Assignment/Lab của Day 1 yêu cầu bạn hoàn thành toàn bộ chuỗi: **chuẩn bị administrative workstation, approved access checklist, Linux/RHEL lab environment, evidence repository và personal learning baseline; thực hành CLI navigation, file creation/copy/move/delete/searching/text processing; tạo và quản lý users/groups; cấu hình ownership, permissions và least-privilege `sudo`; tạo SSH key và thiết lập secure SSH access; kiểm tra cả authorized lẫn denied access; document commands; cuối cùng nộp system inventory, access verification và configuration evidence.** Infrastructure_Operations_14_Da…
+## Linux/RHEL Administrative Foundation Lab
 
-Module này sẽ triển khai yêu cầu đó thành một **end-to-end controlled lab**. Mặc định toàn bộ thao tác chỉ được thực hiện trên **lab/non-production/authorized environment**. Không áp dụng trực tiếp lên production.
+Module Thực hành Day 1 được xây trực tiếp từ Assignment/Lab của syllabus. Phạm vi bắt buộc gồm: chuẩn bị `administrative workstation`, `approved access checklist`, Linux/RHEL lab environment, evidence repository và personal learning baseline; thực hành CLI navigation, file creation/copy/move/delete, searching và text processing; tạo/quản lý controlled users và groups; cấu hình ownership/permissions; thiết lập least-privilege `sudo`; tạo và cấu hình SSH keys; kiểm thử cả authorized và denied access; document commands; cuối cùng nộp system inventory, access verification và configuration evidence. Infrastructure_Operations_14_Da…
+
+Toàn bộ phần dưới mặc định chạy trên **lab/non-production/authorized environment**. Syllabus cũng nhấn mạnh rằng các hoạt động có rủi ro cao, privileged operations và production changes phải có authorization, rollback planning và supervision thích hợp. Infrastructure_Operations_14_Da…
 
 ---
 
 # 1. Mục tiêu cuối cùng của Module Thực hành
 
-Sau khi hoàn thành, bạn phải có khả năng tự thực hiện workflow:
+Sau khi hoàn thành toàn bộ lab, bạn không chỉ cần chứng minh rằng:
+
+```text
+"Tôi biết chạy Linux commands."
+```
+
+Bạn phải chứng minh được workflow:
 
 ```text
 Prepare
-  ↓
-Confirm authorization
-  ↓
-Identify target
-  ↓
-Capture baseline
-  ↓
-Perform CLI operations
-  ↓
-Create users/groups
-  ↓
-Configure ownership/permissions
-  ↓
-Configure least-privilege sudo
-  ↓
-Configure SSH public-key access
-  ↓
-Positive verification
-  ↓
-Negative verification
-  ↓
+   ↓
+Identify
+   ↓
+Baseline
+   ↓
+Execute
+   ↓
+Verify
+   ↓
+Test allowed behavior
+   ↓
+Test denied behavior
+   ↓
+Troubleshoot
+   ↓
 Collect evidence
-  ↓
-Cleanup / rollback
-  ↓
-Final verification
+   ↓
+Rollback / Cleanup
+   ↓
+Close / Escalate
 ```
 
-Điểm quan trọng là bạn không chỉ chứng minh:
+Acceptance level mong muốn là bạn có thể tự thực hiện một task kiểu:
 
-```text
-"It works."
-```
-
-mà còn phải chứng minh:
-
-```text
-Correct identity works.
-Incorrect identity is denied.
-Correct privilege works.
-Unauthorized privilege is denied.
-Configuration matches requirement.
-Evidence is sufficient.
-Rollback is possible.
-```
+> Một controlled Linux user cần được tạo, thêm vào đúng group, được truy cập đúng resource, bị từ chối với resource không được phép, có một `sudo` privilege rất giới hạn và có SSH public-key authentication; toàn bộ operation phải có evidence và rollback.
 
 ---
 
-# 2. Lab topology
+# 2. Lab Topology
 
-Một topology lý tưởng:
-
-```text
-+--------------------------------+
-| Administrative Workstation     |
-|                                |
-| Terminal                       |
-| SSH client                     |
-| SSH private key                |
-| Evidence repository            |
-+---------------+----------------+
-                |
-                | SSH
-                |
-                v
-+--------------------------------+
-| Linux / RHEL Lab Server        |
-|                                |
-| Existing approved admin        |
-| sudo available                 |
-| SSH server already operational |
-| Local users/groups             |
-| Lab filesystem objects         |
-+--------------------------------+
-```
-
-Có hai roles quan trọng.
-
-### Existing administrator
-
-Ví dụ placeholder:
+Chúng ta sử dụng topology logic:
 
 ```text
-labadmin
++-------------------------------------+
+| Administrative Workstation          |
+|                                     |
+| Terminal / Bash                     |
+| OpenSSH client                      |
+| SSH private key                     |
+| Evidence repository                 |
++------------------+------------------+
+                   |
+                   | SSH
+                   |
+                   v
++-------------------------------------+
+| rhel-lab01                          |
+| Linux / RHEL lab VM                 |
+|                                     |
+| Existing admin/student account      |
+| sudo privilege                      |
+|                                     |
+| Controlled users:                   |
+|   ops1                              |
+|   audit1                            |
+|                                     |
+| Controlled group:                   |
+|   day1ops                           |
+|                                     |
+| Lab data:                           |
+|   /srv/day1lab                      |
++-------------------------------------+
 ```
 
-Account này đã được mentor/lab owner cung cấp và có đủ `sudo` privilege để tạo lab users và configuration.
+Tên ở đây chỉ là lab convention.
 
-### Lab-created accounts
-
-Chúng ta sẽ dùng ví dụ:
+Nếu environment của bạn khác, thay:
 
 ```text
-d1ops
-d1viewer
+rhel-lab01
+student
+ops1
+audit1
+day1ops
 ```
 
-và group:
+bằng approved lab names.
 
-```text
-d1opsgrp
-```
-
-Tên này chỉ dành cho training. Trong environment thật phải theo organization naming convention.
+Không dùng production usernames hoặc tài khoản người thật để thực hành.
 
 ---
 
-# 3. Assumptions của lab
+# 3. Quy ước risk cho commands
 
-Lab giả định:
-
-```text
-Linux/RHEL VM đã được provision.
-SSH server đã hoạt động.
-Bạn có approved administrative account.
-Administrative account có đủ sudo privilege.
-Bạn không cần thay sshd_config.
-Bạn không cần thay firewall.
-Bạn không cần thay SELinux.
-Bạn không cần install package mới.
-```
-
-Các chủ đề như `systemd`, networking, `firewalld`, SELinux và package management thuộc Day 2 nên Day 1 **không sửa những subsystem đó**. Infrastructure_Operations_14_Da…
-
-Nếu một vấn đề yêu cầu thay đổi chúng, Day 1 action đúng là:
+Trong toàn bộ lab, tôi sẽ sử dụng ba mức:
 
 ```text
-collect evidence
-+
-document
-+
-escalate
+[RO]
+Read-only / verification
+
+[CHANGE]
+Thay đổi state/configuration
+
+[DESTRUCTIVE]
+Có khả năng remove data/account/configuration
 ```
-
-chứ không mở rộng scope tùy tiện.
-
----
-
-# 4. Safety Rules bắt buộc
-
-Trước mọi command thay đổi state:
-
-```bash
-hostname
-whoami
-id
-pwd
-```
-
-Mục tiêu:
-
-```text
-hostname → đúng server?
-whoami   → đúng account?
-id       → đúng privilege/groups?
-pwd      → đúng directory?
-```
-
-Với destructive operations như:
-
-```bash
-rm
-userdel
-groupdel
-chmod -R
-chown -R
-```
-
-phải kiểm tra target trước.
-
-Không bao giờ dùng trong lab này:
-
-```bash
-rm -rf /
-chmod -R 777 /
-chown -R ...
-```
-
-trên system paths.
-
-Không chia sẻ:
-
-```text
-Password
-SSH private key
-Passphrase
-Token
-Secret
-```
-
-trong screenshot, command log hoặc evidence.
-
----
-
-# 5. Phân loại commands trong lab
-
-## Read-only verification
 
 Ví dụ:
 
 ```bash
-hostname
+# [RO]
 whoami
+
+# [CHANGE]
+chmod 640 file.txt
+
+# [DESTRUCTIVE]
+rm file.txt
+```
+
+`DESTRUCTIVE` không có nghĩa command bị cấm. Nó có nghĩa bạn phải biết chính xác:
+
+```text
+target
+scope
+impact
+rollback
+authorization
+```
+
+trước khi execute.
+
+---
+
+# 4. LAB 0 — Safety Gate và Lab Readiness
+
+## Objective
+
+Xác minh rằng bạn đang đứng đúng environment trước khi thực hiện bất kỳ configuration change nào.
+
+---
+
+## 4.1 Prerequisites
+
+Bạn cần có:
+
+- một Linux/RHEL VM hoặc authorized Linux lab;
+- một existing administrative account;
+- `sudo` access thích hợp;
+- SSH client;
+- network connectivity tới lab;
+- không dùng production secrets;
+- đủ disk space cho evidence;
+- quyền tạo controlled lab users/groups;
+- quyền chỉnh `/etc/sudoers.d/` trong lab nếu thực hiện phần `sudo`.
+
+Nếu bạn không có một trong các quyền trên, **không bypass**. Ghi nhận limitation và thực hiện phần có thể làm.
+
+---
+
+# 5. Xác định target trước khi làm gì khác
+
+Trên Linux server:
+
+```bash
+# [RO]
+hostname
+```
+
+Tiếp:
+
+```bash
+# [RO]
+hostnamectl
+```
+
+Kiểm tra current identity:
+
+```bash
+# [RO]
+whoami
+```
+
+```bash
+# [RO]
 id
+```
+
+Kiểm tra current directory:
+
+```bash
+# [RO]
 pwd
-ls
-stat
-getent
-uname
-cat /etc/os-release
-sudo -l
 ```
 
-Các command này chủ yếu dùng để inspect state.
-
-## Configuration-changing
-
-Ví dụ:
+Kiểm tra timestamp:
 
 ```bash
-mkdir
-touch
-cp
-mv
-rm
-groupadd
-useradd
-usermod
-chmod
-chown
-chgrp
-ssh-keygen
-visudo
+# [RO]
+date -Is
 ```
 
-Đặc biệt:
+`date -Is` thường cho output kiểu:
 
 ```text
-useradd/usermod/userdel
-sudoers change
-SSH authorized_keys change
+2026-10-19T09:30:15+07:00
 ```
 
-phải được xem là controlled administrative changes.
+Timestamps là phần quan trọng của evidence.
 
 ---
 
-# PHASE 1 — ADMINISTRATIVE WORKSTATION PREPARATION
+# 6. Expected Result
 
-# 6. Objective
-
-Chuẩn bị workstation trước khi đụng tới target server.
-
-Bạn cần đảm bảo:
+Bạn phải biết rõ:
 
 ```text
-Terminal works
-SSH client works
-Evidence location exists
-Target information is known
-Approved credential exists
-No production target is involved
+Hostname:
+Environment:
+Current user:
+UID:
+Primary group:
+Supplementary groups:
+Current directory:
+Current timestamp/timezone:
+```
+
+Ví dụ conceptual:
+
+```text
+Hostname        : rhel-lab01
+Environment     : LAB
+User            : student
+UID             : 1000
+Primary group   : student
+sudo access     : authorized lab admin
+```
+
+Không cần output giống ví dụ.
+
+---
+
+# 7. Safety stop conditions
+
+Không tiếp tục configuration-changing labs nếu phát hiện:
+
+```text
+hostname không phải lab target
+production marker
+account không đúng
+không biết environment
+sudo privilege không được authorize
+system thuộc người/team khác
+```
+
+Đây không phải "lab failure".
+
+Đó chính là correct operational behavior.
+
+---
+
+# 8. LAB 1 — Administrative Workstation Preparation
+
+## Objective
+
+Chuẩn bị workstation dùng để:
+
+```text
+SSH
+evidence collection
+command documentation
+key storage
+lab notes
 ```
 
 ---
 
-# 7. Kiểm tra SSH client
+# 9. Kiểm tra SSH client
 
-Trên workstation:
+Trên administrative workstation:
 
 ```bash
+# [RO]
 ssh -V
 ```
 
-Expected result dạng:
+Output có thể tương tự:
 
 ```text
 OpenSSH_...
 ```
 
-Không cần version cụ thể.
+Version cụ thể phụ thuộc operating system.
 
-Điều bạn cần chứng minh:
-
-```text
-SSH client exists
-```
+Không cần cố làm version giống ví dụ.
 
 ---
 
-# 8. Tạo evidence repository
-
-Ví dụ trên workstation:
+# 10. Kiểm tra user/workstation identity
 
 ```bash
-mkdir -p ~/Infrastructure_Operations/Day01/{00_admin,01_inventory,02_cli,03_users_groups,04_permissions,05_sudo,06_ssh,07_verification,08_failures,09_final}
+# [RO]
+whoami
+hostname
+date -Is
+```
+
+Bạn cần phân biệt:
+
+```text
+Administrative workstation hostname
+```
+
+với:
+
+```text
+Target server hostname
+```
+
+Đây là hai systems khác nhau.
+
+---
+
+# 11. Tạo evidence repository
+
+Trên workstation:
+
+```bash
+# [CHANGE]
+mkdir -p ~/day1_evidence/{00_access,01_inventory,02_cli,03_files,04_users_groups,05_permissions,06_sudo,07_ssh,08_failures,09_cleanup}
 ```
 
 Kiểm tra:
 
 ```bash
-find ~/Infrastructure_Operations/Day01 -maxdepth 1 -type d -print
+# [RO]
+find ~/day1_evidence -maxdepth 1 -type d | sort
+```
+
+Expected structure:
+
+```text
+day1_evidence/
+├── 00_access
+├── 01_inventory
+├── 02_cli
+├── 03_files
+├── 04_users_groups
+├── 05_permissions
+├── 06_sudo
+├── 07_ssh
+├── 08_failures
+├── 09_cleanup
+```
+
+---
+
+# 12. Vì sao evidence phải chia structure?
+
+Nếu bạn lưu:
+
+```text
+screenshot1.png
+screenshot2.png
+output1.txt
+final.txt
+```
+
+sau vài ngày rất khó biết file nào chứng minh điều gì.
+
+Evidence structure tốt phải cho reviewer hiểu:
+
+```text
+what evidence belongs to what control/task
+```
+
+---
+
+# 13. Evidence naming convention
+
+Một naming convention hữu ích:
+
+```text
+YYYYMMDD_HHMM_<host>_<topic>_<description>.txt
+```
+
+Ví dụ:
+
+```text
+20261019_0930_rhel-lab01_inventory_os.txt
+20261019_0940_rhel-lab01_permission_before.txt
+20261019_0942_rhel-lab01_permission_after.txt
+```
+
+Không bắt buộc phải dùng format này.
+
+Điểm quan trọng là consistency.
+
+---
+
+# 14. Đừng lưu secrets vào evidence
+
+Không lưu:
+
+```text
+private SSH key
+password
+access token
+session token
+secret key
+recovery code
+```
+
+Public SSH key và fingerprint có thể phù hợp với evidence tùy policy.
+
+Private SSH key thì không.
+
+---
+
+# 15. LAB 2 — Approved Access Checklist
+
+## Objective
+
+Chứng minh rằng bạn đã xác minh access trước khi thực hiện administration.
+
+---
+
+# 16. Access checklist cần trả lời
+
+Tạo một note, ví dụ:
+
+```text
+Lab ID:
+Date:
+Operator:
+Source workstation:
+Target hostname:
+Environment:
+Approved account:
+Expected privilege:
+Access method:
+Change scope:
+Rollback available:
+Evidence location:
+```
+
+Ví dụ:
+
+```text
+Lab ID: DAY1-LAB
+Operator: student
+Target: rhel-lab01
+Environment: non-production lab
+Access method: SSH
+Privilege: authorized sudo for lab
+Scope: Day 1 controlled Linux administration
+```
+
+Đây là evidence về operational readiness chứ không phải technical command output.
+
+---
+
+# 17. Verify SSH target
+
+Nếu DNS hostname được dùng:
+
+```bash
+# [RO]
+getent hosts rhel-lab01
 ```
 
 Expected:
 
 ```text
-Day01/
-00_admin
-01_inventory
-02_cli
-...
-09_final
+<IP> rhel-lab01
 ```
+
+Nếu command không trả về gì, có thể DNS/host resolution chưa đúng.
+
+Đừng ngay lập tức sửa `/etc/hosts` nếu chưa có authorization.
 
 ---
 
-# 9. Ý nghĩa cấu trúc evidence
-
-```text
-00_admin
-```
-
-chứa authorization checklist, scope và lab notes.
-
-```text
-01_inventory
-```
-
-chứa system baseline.
-
-```text
-02_cli
-```
-
-chứa CLI exercise evidence.
-
-```text
-03_users_groups
-```
-
-chứa user/group configuration.
-
-```text
-04_permissions
-```
-
-chứa ownership, `chmod`, `umask`.
-
-```text
-05_sudo
-```
-
-chứa `sudo` evidence.
-
-```text
-06_ssh
-```
-
-chứa SSH evidence nhưng **không chứa private key contents**.
-
-```text
-07_verification
-```
-
-chứa positive/negative functional tests.
-
-```text
-08_failures
-```
-
-chứa Failure Injection evidence.
-
-```text
-09_final
-```
-
-chứa final report/checklist.
-
----
-
-# 10. Evidence naming convention
-
-Nên dùng naming convention nhất quán:
-
-```text
-YYYYMMDD_HHMM_<host>_<purpose>.txt
-```
-
-Ví dụ:
-
-```text
-20261018_2200_rhel-lab01_inventory.txt
-```
-
-Hoặc trong lab nhỏ:
-
-```text
-01_system_identity.txt
-02_users_groups.txt
-03_permission_before.txt
-04_permission_after.txt
-```
-
-Consistency quan trọng hơn format cụ thể.
-
----
-
-# PHASE 2 — APPROVED ACCESS CHECKLIST
-
-# 11. Trước khi SSH
-
-Tạo một checklist như:
-
-```text
-Day 1 Access Checklist
-
-Target hostname:
-Target IP:
-Environment:
-System owner:
-Purpose:
-Approved administrative user:
-Authorization/ticket reference:
-Allowed operations:
-Forbidden operations:
-Rollback plan:
-Evidence directory:
-```
-
-Sau đó check:
-
-```text
-[ ] Target is lab/non-production
-[ ] Hostname/IP confirmed
-[ ] Administrative account approved
-[ ] sudo scope confirmed
-[ ] SSH method approved
-[ ] Lab change scope understood
-[ ] Evidence location prepared
-[ ] Rollback method understood
-[ ] No real credentials will be recorded
-```
-
----
-
-# 12. Vì sao bước này quan trọng?
-
-Nếu bạn bỏ qua bước này, bạn có thể làm hoàn hảo về technical nhưng sai về operations.
-
-Ví dụ:
-
-```text
-Correct command
-+
-wrong production server
-=
-incident
-```
-
-Hay:
-
-```text
-Correct SSH key
-+
-unapproved account
-=
-security violation
-```
-
----
-
-# PHASE 3 — CONNECT VÀ CONFIRM TARGET
-
-# 13. SSH vào server bằng account có sẵn
-
-Ví dụ:
+# 18. Verify initial SSH
 
 ```bash
-ssh labadmin@LAB_HOST
+# [RO]
+ssh student@rhel-lab01
 ```
 
-Thay:
+Lần đầu có thể gặp host-key verification prompt.
+
+Không sử dụng shortcut kiểu:
 
 ```text
-LAB_HOST
+StrictHostKeyChecking=no
 ```
 
-bằng hostname/IP của authorized lab.
+chỉ để bỏ qua validation.
+
+Trong lab được quản lý, bạn nên đối chiếu host fingerprint với source tin cậy nếu available.
 
 ---
 
-# 14. Ngay sau login
+# 19. Sau khi login
 
-Không chạy admin change ngay.
-
-Chạy:
+Ngay lập tức:
 
 ```bash
 hostname
@@ -518,244 +526,362 @@ pwd
 date -Is
 ```
 
-Expected:
+Đây là post-login identity verification.
+
+Bạn muốn xác nhận:
 
 ```text
-hostname = lab target
-whoami   = labadmin
-id       = expected UID/GID/groups
-pwd      = expected home
-timestamp available
+Correct host
++
+Correct account
++
+Correct session
 ```
-
-Nếu hostname không đúng:
-
-> dừng lab.
-
-Không cố tiếp tục.
 
 ---
 
-# 15. Lưu initial evidence
+# 20. Verify sudo scope
 
-Có thể dùng:
+```bash
+# [RO]
+sudo -l
+```
+
+Đọc output thay vì chỉ nhìn thấy:
+
+```text
+User may run the following commands...
+```
+
+Hãy xác định:
+
+```text
+Có unrestricted sudo?
+Có command-specific sudo?
+Có target-user restriction?
+```
+
+Không chạy arbitrary privileged command chỉ để "test".
+
+---
+
+# 21. Evidence
+
+Có thể lưu:
 
 ```bash
 {
-    echo "=== Day 1 Initial Context ==="
     date -Is
     hostname
     whoami
     id
-    pwd
-} | tee ~/day1_initial_context.txt
+    sudo -l
+} | tee ~/day1_access_verification.txt
 ```
 
-Sau đó copy file evidence về workstation theo approved method nếu cần.
+Nếu evidence repository nằm trên workstation thay vì server, copy output sau đó bằng approved method.
+
+Không đặt password trong pipe hoặc command arguments.
 
 ---
 
-# PHASE 4 — SYSTEM INVENTORY
+# 22. LAB 3 — Personal Learning Baseline
 
-Syllabus yêu cầu nộp system inventory. Infrastructure_Operations_14_Da…
+Syllabus yêu cầu `personal learning baseline`. Infrastructure_Operations_14_Da…
 
-# 16. Basic inventory
+Đây không phải Linux configuration.
 
-Chạy:
+Mục đích là xác định skill level trước lab.
+
+---
+
+# 23. Baseline scoring
+
+Bạn có thể tự chấm:
+
+| Skill                  |         0 |            1 |                2 |      3 |
+| ---------------------- | --------: | -----------: | ---------------: | -----: |
+| CLI navigation         | chưa biết | biết command | làm có hướng dẫn | tự làm |
+| File operations        |         0 |            1 |                2 |      3 |
+| Search/text processing |         0 |            1 |                2 |      3 |
+| Users/groups           |         0 |            1 |                2 |      3 |
+| Permissions            |         0 |            1 |                2 |      3 |
+| `sudo`                 |         0 |            1 |                2 |      3 |
+| SSH key                |         0 |            1 |                2 |      3 |
+| Troubleshooting        |         0 |            1 |                2 |      3 |
+| Evidence collection    |         0 |            1 |                2 |      3 |
+
+Không dùng baseline để "lấy điểm".
+
+Mục đích là so sánh trước/sau Day 1.
+
+---
+
+# 24. LAB 4 — System Inventory
+
+## Objective
+
+Thu thập baseline mô tả Linux system trước configuration changes.
+
+---
+
+# 25. Timestamp
+
+Bắt đầu inventory bằng:
 
 ```bash
-hostname
+# [RO]
+date -Is
+```
+
+---
+
+# 26. Host identity
+
+```bash
+# [RO]
+hostnamectl
+```
+
+Quan sát:
+
+```text
+Static hostname
+Operating System
+Kernel
+Architecture
+```
+
+Không phải mọi Linux distribution sẽ hiển thị giống nhau.
+
+---
+
+# 27. Distribution information
+
+```bash
+# [RO]
+cat /etc/os-release
+```
+
+Bạn phải xác định:
+
+```text
+NAME
+VERSION
+ID
+VERSION_ID
+```
+
+Ví dụ RHEL có metadata tương ứng của Red Hat Enterprise Linux.
+
+Không dùng:
+
+```bash
 uname -r
+```
+
+để kết luận OS release.
+
+---
+
+# 28. Kernel
+
+```bash
+# [RO]
+uname -r
+```
+
+Architecture:
+
+```bash
+# [RO]
+uname -m
+```
+
+Có thể xem tổng hợp:
+
+```bash
+# [RO]
 uname -a
-cat /etc/os-release
-whoami
-id
 ```
-
-Bạn phải biết giải thích output.
 
 ---
 
-# 17. `hostname`
+# 29. CPU
 
 ```bash
-hostname
-```
-
-Xác nhận asset identity ở OS level.
-
-Không nhất thiết đủ để xác định toàn bộ CMDB identity, nhưng rất hữu ích.
-
----
-
-# 18. Kernel
-
-```bash
-uname -r
-```
-
-Expected:
-
-```text
-kernel release string
-```
-
-Lưu chính xác output thay vì đoán version.
-
----
-
-# 19. OS release
-
-```bash
-cat /etc/os-release
-```
-
-Tìm các fields như:
-
-```text
-NAME=
-VERSION=
-ID=
-VERSION_ID=
-```
-
-Nếu là RHEL thì output sẽ phản ánh RHEL release của lab.
-
-Không cần thay đổi gì.
-
----
-
-# 20. Supplemental inventory
-
-Ngoài syllabus core, có thể thu thập basic hardware/resource inventory bằng read-only commands:
-
-```bash
+# [RO]
 lscpu
 ```
 
-```bash
-free -h
-```
+Bạn chưa cần phân tích NUMA hay virtualization sâu ở Day 1.
 
-```bash
-df -hT
-```
-
-```bash
-lsblk
-```
-
-Các command này giúp inventory có:
+Cần nhận biết:
 
 ```text
-CPU
-Memory
-Mounted filesystem capacity
-Block devices
+Architecture
+CPU count
+Model name
 ```
-
-Đây là **kiến thức bổ sung phục vụ inventory**, không phải phần storage administration của Day 2.
 
 ---
 
-# 21. Inventory evidence command
+# 30. Memory
+
+```bash
+# [RO]
+free -h
+```
+
+`-h` giúp human-readable.
+
+Day 1 chỉ cần inventory, chưa troubleshooting memory sâu.
+
+---
+
+# 31. Block devices
+
+```bash
+# [RO]
+lsblk
+```
+
+Có thể thêm filesystem details:
+
+```bash
+# [RO]
+lsblk -f
+```
+
+Không chạy `fdisk`, `mkfs`, `wipefs` hoặc disk-changing command trong Day 1.
+
+Storage administration thuộc Day 2.
+
+---
+
+# 32. Network identity
+
+**Kiến thức bổ sung phục vụ inventory; networking được học sâu ở Day 2.**
+
+```bash
+# [RO]
+ip -brief address
+```
+
+Route overview:
+
+```bash
+# [RO]
+ip route
+```
+
+Không thay IP hoặc route trong Day 1.
+
+---
+
+# 33. Current identity
+
+```bash
+# [RO]
+id
+```
+
+---
+
+# 34. Lưu inventory evidence
 
 Ví dụ:
 
 ```bash
 {
-    echo "=== Timestamp ==="
+    echo "=== TIMESTAMP ==="
     date -Is
 
-    echo
-    echo "=== Hostname ==="
-    hostname
+    echo "=== HOST ==="
+    hostnamectl
 
-    echo
-    echo "=== Identity ==="
-    whoami
-    id
-
-    echo
-    echo "=== Kernel ==="
-    uname -a
-
-    echo
-    echo "=== OS Release ==="
+    echo "=== OS ==="
     cat /etc/os-release
 
-    echo
+    echo "=== KERNEL ==="
+    uname -r
+    uname -m
+
     echo "=== CPU ==="
     lscpu
 
-    echo
-    echo "=== Memory ==="
+    echo "=== MEMORY ==="
     free -h
 
-    echo
-    echo "=== Filesystems ==="
-    df -hT
+    echo "=== STORAGE ==="
+    lsblk -f
 
-    echo
-    echo "=== Block Devices ==="
-    lsblk
-} > ~/day1_system_inventory.txt
+    echo "=== NETWORK ==="
+    ip -brief address
+
+    echo "=== IDENTITY ==="
+    id
+} | tee ~/day1_system_inventory.txt
 ```
 
-Verify:
+Đây là read-only collection.
+
+---
+
+# 35. Verification
+
+Đọc lại:
 
 ```bash
 less ~/day1_system_inventory.txt
 ```
 
----
+Hoặc:
 
-# PHASE 5 — PERSONAL LEARNING BASELINE
-
-Đây là deliverable được syllabus yêu cầu. Infrastructure_Operations_14_Da…
-
-# 22. Self-assessment trước lab
-
-Tự đánh giá mức:
-
-```text
-0 = chưa biết
-1 = đã nghe nhưng chưa làm được
-2 = làm được với hướng dẫn
-3 = tự thực hiện và giải thích được
-4 = tự troubleshoot cơ bản được
+```bash
+cat ~/day1_system_inventory.txt
 ```
 
-Cho các skills:
+Kiểm tra:
 
-| Skill                   | Before Day 1 |
-| ----------------------- | -----------: |
-| `pwd`, `ls`, `cd`       |              |
-| Absolute/relative paths |              |
-| `cp`, `mv`, `rm`        |              |
-| Pipes/redirection       |              |
-| `grep`, `find`          |              |
-| Users/groups            |              |
-| Ownership               |              |
-| `chmod`                 |              |
-| `umask`                 |              |
-| `sudo`                  |              |
-| SSH                     |              |
-| SSH keys                |              |
-| Evidence collection     |              |
-| Rollback thinking       |              |
-
-Sau lab bạn chấm lại.
-
-Mục tiêu là đo **progress**, không phải cố ghi điểm cao.
+```text
+Có hostname?
+Có timestamp?
+Có OS?
+Có kernel?
+Có identity?
+Output có bị truncate không?
+```
 
 ---
 
-# PHASE 6 — CLI NAVIGATION
+# 36. Troubleshooting
 
-# 23. Objective
+Nếu:
 
-Bạn phải sử dụng được:
+```text
+command not found
+```
+
+đừng ngay lập tức install package.
+
+Xác định:
+
+```bash
+command -v <command>
+```
+
+và ghi evidence rằng utility không available.
+
+Package management là Day 2 và việc install package có thể cần authorization.
+
+---
+
+# 37. LAB 5 — CLI Navigation
+
+## Objective
+
+Thành thạo:
 
 ```text
 pwd
@@ -768,1169 +894,1091 @@ relative path
 ~
 ```
 
-và luôn biết current context.
-
 ---
 
-# 24. Tạo workspace
-
-Trong home của administrative account:
+# 38. Tạo workspace
 
 ```bash
-mkdir -p ~/day1-lab/{input,working,output,backup}
+# [CHANGE]
+mkdir -p ~/day1_lab/navigation/a/b/c
 ```
 
 Verify:
 
 ```bash
-find ~/day1-lab -maxdepth 2 -type d -print
+# [RO]
+find ~/day1_lab/navigation -type d
 ```
 
 ---
 
-# 25. Navigation exercise
-
-```bash
-cd ~/day1-lab
-pwd
-```
-
-Expected:
-
-```text
-/home/<user>/day1-lab
-```
-
-Tiếp:
-
-```bash
-cd input
-pwd
-```
-
-Tiếp:
-
-```bash
-cd ..
-pwd
-```
-
-Tiếp:
-
-```bash
-cd ./working
-pwd
-```
-
-Tiếp:
-
-```bash
-cd ../backup
-pwd
-```
-
-Cuối:
+# 39. Bắt đầu tại home
 
 ```bash
 cd ~
 pwd
 ```
 
-Bạn phải giải thích được mỗi transition.
+Expected:
+
+```text
+/home/<user>
+```
 
 ---
 
-# 26. Absolute path exercise
-
-Ví dụ:
-
-```bash
-cd ~/day1-lab
-```
-
-Sau đó:
+# 40. Absolute path navigation
 
 ```bash
 cd /etc
 pwd
 ```
 
-Đây là absolute path vì bắt đầu `/`.
-
-Quay về:
-
-```bash
-cd ~/day1-lab
-```
-
----
-
-# 27. Relative path exercise
-
-Từ:
+Expected:
 
 ```text
-~/day1-lab
+/etc
 ```
 
-chạy:
-
-```bash
-cd input
-```
-
-hoặc:
-
-```bash
-cd ./input
-```
-
-Hai command resolve từ current working directory.
-
----
-
-# 28. Hidden files
-
-Chạy:
-
-```bash
-ls
-```
-
-sau đó:
-
-```bash
-ls -a
-```
-
-So sánh.
-
-Các entries:
+Absolute path luôn bắt đầu từ:
 
 ```text
-.
-..
-```
-
-cũng xuất hiện khi dùng `-a`.
-
----
-
-# PHASE 7 — FILE CREATION
-
-# 29. `touch`
-
-Trong workspace:
-
-```bash
-cd ~/day1-lab/input
-touch server01.txt
-touch server02.txt
-touch notes.txt
-```
-
-Verify:
-
-```bash
-ls -l
+/
 ```
 
 ---
 
-# 30. Tạo file có content
+# 41. Relative navigation
 
-Dùng:
-
-```bash
-printf '%s\n' \
-'server=server01' \
-'role=web' \
-'status=OK' > server01.txt
-```
-
-File 2:
+Quay về lab:
 
 ```bash
-printf '%s\n' \
-'server=server02' \
-'role=database' \
-'status=ERROR' > server02.txt
-```
-
-Notes:
-
-```bash
-printf '%s\n' \
-'Day 1 Infrastructure Operations Lab' > notes.txt
-```
-
-Verify:
-
-```bash
-cat server01.txt
-cat server02.txt
-```
-
----
-
-# 31. Hiểu `>`
-
-Command:
-
-```bash
-echo "test" > file.txt
-```
-
-có thể overwrite existing file.
-
-Vì vậy trước khi dùng `>` vào file quan trọng:
-
-```bash
-ls -l file.txt
-```
-
-và nếu cần:
-
-```bash
-cp file.txt file.txt.bak
-```
-
-Trong lab chúng ta chỉ dùng với test files.
-
----
-
-# 32. Append bằng `>>`
-
-```bash
-echo "owner=infra-team" >> server01.txt
-```
-
-Verify:
-
-```bash
-cat server01.txt
-```
-
-Bạn phải thấy content cũ vẫn còn và line mới được append.
-
----
-
-# PHASE 8 — COPY, MOVE, RENAME
-
-# 33. Copy
-
-```bash
-cp ~/day1-lab/input/server01.txt ~/day1-lab/working/
-```
-
-Verify:
-
-```bash
-ls -l ~/day1-lab/working
-```
-
-So sánh:
-
-```bash
-cat ~/day1-lab/input/server01.txt
-cat ~/day1-lab/working/server01.txt
-```
-
----
-
-# 34. Rename bằng `mv`
-
-```bash
-cd ~/day1-lab/working
-mv server01.txt server01_working.txt
-```
-
-Verify:
-
-```bash
-ls -l
-```
-
----
-
-# 35. Move
-
-```bash
-mv server01_working.txt ../output/
-```
-
-Verify source:
-
-```bash
-ls -l
-```
-
-Verify destination:
-
-```bash
-ls -l ../output/
-```
-
----
-
-# 36. Backup
-
-```bash
-cp ~/day1-lab/output/server01_working.txt ~/day1-lab/backup/
-```
-
-Verify:
-
-```bash
-ls -l ~/day1-lab/backup/
-```
-
----
-
-# PHASE 9 — DELETE OPERATIONS
-
-# 37. Safety checkpoint
-
-Trước deletion:
-
-```bash
+cd ~/day1_lab/navigation/a/b/c
 pwd
-ls -l TARGET
 ```
 
-Không dùng wildcard chưa kiểm tra.
-
----
-
-# 38. Controlled file deletion
-
-Tạo disposable file:
+Đi lên một level:
 
 ```bash
-touch ~/day1-lab/working/delete-me.txt
-```
-
-Verify:
-
-```bash
-ls -l ~/day1-lab/working/delete-me.txt
-```
-
-Delete:
-
-```bash
-rm ~/day1-lab/working/delete-me.txt
-```
-
-Verify:
-
-```bash
-ls -l ~/day1-lab/working/
-```
-
----
-
-# 39. Directory deletion
-
-Tạo:
-
-```bash
-mkdir ~/day1-lab/working/tempdir
-```
-
-Nếu empty:
-
-```bash
-rmdir ~/day1-lab/working/tempdir
-```
-
-Điều này an toàn hơn việc reflexively dùng recursive delete.
-
----
-
-# 40. `rm -r`
-
-Chỉ dùng với dedicated disposable directory đã verify.
-
-Ví dụ:
-
-```bash
-mkdir -p ~/day1-lab/working/test-delete/subdir
-touch ~/day1-lab/working/test-delete/subdir/file.txt
-```
-
-Inspect:
-
-```bash
-find ~/day1-lab/working/test-delete -print
-```
-
-Sau khi xác nhận đúng:
-
-```bash
-rm -r ~/day1-lab/working/test-delete
-```
-
-Verify:
-
-```bash
-ls -ld ~/day1-lab/working/test-delete
+cd ..
+pwd
 ```
 
 Expected:
 
 ```text
-No such file or directory
+.../navigation/a/b
 ```
 
 ---
 
-# PHASE 10 — SEARCHING
-
-Syllabus yêu cầu searching exercises. Infrastructure_Operations_14_Da…
-
-# 41. Search filename với `find`
+# 42. Current directory
 
 ```bash
-find ~/day1-lab -type f -name '*.txt' -print
+cd .
 ```
 
-Expected:
-
-Danh sách `.txt` files trong workspace.
-
----
-
-# 42. Search file cụ thể
-
-```bash
-find ~/day1-lab -type f -name 'server01*' -print
-```
-
-Giải thích:
-
-```text
-~/day1-lab  → starting path
--type f     → regular file
--name       → name condition
-server01*   → filename pattern
--print      → display result
-```
-
----
-
-# 43. Search content với `grep`
-
-```bash
-grep 'status=ERROR' ~/day1-lab/input/*.txt
-```
-
-Expected:
-
-```text
-server02.txt:status=ERROR
-```
-
----
-
-# 44. Case-insensitive search
-
-```bash
-grep -i 'error' ~/day1-lab/input/*.txt
-```
-
----
-
-# 45. Line numbers
-
-```bash
-grep -n 'status' ~/day1-lab/input/server02.txt
-```
-
-Output có dạng:
-
-```text
-3:status=ERROR
-```
-
----
-
-# PHASE 11 — BASIC TEXT PROCESSING
-
-Day 2 mới đi sâu `grep/awk/sed` và regular expressions. Day 1 chỉ cần foundation về command composition và simple text processing. Infrastructure_Operations_14_Da…
-
-# 46. `cat`
-
-```bash
-cat ~/day1-lab/input/server01.txt
-```
-
-Dùng cho small text files.
-
-Không dùng `cat` blindly với huge files hoặc sensitive files.
-
----
-
-# 47. `head`
-
-```bash
-head ~/day1-lab/input/server01.txt
-```
-
----
-
-# 48. `tail`
-
-```bash
-tail ~/day1-lab/input/server01.txt
-```
-
----
-
-# 49. `wc`
-
-```bash
-wc -l ~/day1-lab/input/server01.txt
-```
-
-Count lines.
-
----
-
-# 50. Pipe exercise
-
-```bash
-cat ~/day1-lab/input/server02.txt | grep 'status'
-```
-
-Lưu ý command có thể viết đơn giản hơn:
-
-```bash
-grep 'status' ~/day1-lab/input/server02.txt
-```
-
-Nhưng pipe version giúp bạn học data flow:
-
-```text
-cat stdout
-    ↓
-pipe
-    ↓
-grep stdin
-```
-
----
-
-# 51. `sort`
-
-Tạo:
-
-```bash
-printf '%s\n' \
-'server03' \
-'server01' \
-'server02' \
-'server01' > ~/day1-lab/input/servers.txt
-```
-
-Sort:
-
-```bash
-sort ~/day1-lab/input/servers.txt
-```
-
----
-
-# 52. `uniq`
-
-Để `uniq` xử lý duplicates liền nhau một cách hữu dụng:
-
-```bash
-sort ~/day1-lab/input/servers.txt | uniq
-```
-
-Count:
-
-```bash
-sort ~/day1-lab/input/servers.txt | uniq -c
-```
-
----
-
-# 53. Pipeline evidence
-
-```bash
-sort ~/day1-lab/input/servers.txt \
-| uniq -c \
-| tee ~/day1-lab/output/server_counts.txt
-```
-
-Verify:
-
-```bash
-cat ~/day1-lab/output/server_counts.txt
-```
-
----
-
-# PHASE 12 — USERS VÀ GROUPS
-
-Từ đây bắt đầu administrative changes.
-
-Trước mỗi stage:
-
-```bash
-hostname
-whoami
-sudo -l
-```
-
----
-
-# 54. Requirement
-
-Tạo:
-
-```text
-Group:
-d1opsgrp
-
-Users:
-d1ops
-d1viewer
-```
-
-Target behavior:
-
-```text
-d1ops:
-member of d1opsgrp
-
-d1viewer:
-not member of d1opsgrp
-```
-
----
-
-# 55. Baseline trước change
-
-Kiểm tra names chưa tồn tại:
-
-```bash
-getent passwd d1ops
-getent passwd d1viewer
-getent group d1opsgrp
-```
-
-Expected nếu chưa tồn tại:
-
-```text
-no matching output
-```
-
-Một non-zero exit code có thể xảy ra.
-
----
-
-# 56. Tạo group
-
-**Configuration-changing command:**
-
-```bash
-sudo groupadd d1opsgrp
-```
-
-Verify:
-
-```bash
-getent group d1opsgrp
-```
-
-Expected:
-
-```text
-d1opsgrp:x:<GID>:
-```
-
-Exact GID không được đoán.
-
----
-
-# 57. Tạo `d1ops`
-
-```bash
-sudo useradd -m -s /bin/bash d1ops
-```
-
-Giải thích:
-
-```text
-useradd       create user
--m            create home directory
--s /bin/bash  configure login shell
-d1ops         username
-```
-
-Verify:
-
-```bash
-getent passwd d1ops
-```
-
-```bash
-id d1ops
-```
-
-```bash
-ls -ld /home/d1ops
-```
-
----
-
-# 58. Tạo `d1viewer`
-
-```bash
-sudo useradd -m -s /bin/bash d1viewer
-```
-
-Verify:
-
-```bash
-getent passwd d1viewer
-id d1viewer
-ls -ld /home/d1viewer
-```
-
----
-
-# 59. Add supplementary group
-
-```bash
-sudo usermod -aG d1opsgrp d1ops
-```
-
-Điểm quan trọng:
-
-```text
--a
-```
-
-là append.
-
-```text
--G
-```
-
-specify supplementary groups.
-
-Không được bỏ `-a` theo thói quen khi intention là append, vì tùy syntax nó có thể thay thế supplementary group list.
-
----
-
-# 60. Verify group membership
-
-```bash
-id d1ops
-```
-
-Expected:
-
-```text
-groups=...,d1opsgrp
-```
-
-Kiểm tra `d1viewer`:
-
-```bash
-id d1viewer
-```
-
-Expected:
-
-```text
-d1opsgrp not present
-```
-
----
-
-# 61. Evidence
-
-```bash
-{
-    date -Is
-    hostname
-
-    echo "=== Group ==="
-    getent group d1opsgrp
-
-    echo "=== d1ops ==="
-    getent passwd d1ops
-    id d1ops
-
-    echo "=== d1viewer ==="
-    getent passwd d1viewer
-    id d1viewer
-} | tee ~/day1_users_groups.txt
-```
-
----
-
-# PHASE 13 — OWNERSHIP
-
-# 62. Tạo controlled filesystem area
-
-Trong dedicated lab:
-
-```bash
-sudo mkdir -p /srv/day1-lab/reports
-```
-
-Verify:
-
-```bash
-ls -ld /srv/day1-lab
-ls -ld /srv/day1-lab/reports
-```
-
----
-
-# 63. Tạo test file
-
-```bash
-echo "Day 1 restricted operational report" \
-| sudo tee /srv/day1-lab/reports/report.txt >/dev/null
-```
-
-Verify:
-
-```bash
-ls -l /srv/day1-lab/reports/report.txt
-```
-
----
-
-# 64. Capture BEFORE state
-
-```bash
-{
-    date -Is
-    hostname
-    ls -ld /srv/day1-lab/reports
-    ls -l /srv/day1-lab/reports/report.txt
-    stat /srv/day1-lab/reports/report.txt
-} | tee ~/permission_before.txt
-```
-
----
-
-# 65. Change directory ownership
-
-Requirement:
-
-```text
-owner = d1ops
-group = d1opsgrp
-```
-
-Command:
-
-```bash
-sudo chown d1ops:d1opsgrp /srv/day1-lab/reports
-```
-
-Verify:
-
-```bash
-ls -ld /srv/day1-lab/reports
-```
-
----
-
-# 66. Change file ownership
-
-```bash
-sudo chown d1ops:d1opsgrp /srv/day1-lab/reports/report.txt
-```
-
-Verify:
-
-```bash
-ls -l /srv/day1-lab/reports/report.txt
-```
-
----
-
-# 67. `chgrp` exercise
-
-Tạo second test file:
-
-```bash
-sudo touch /srv/day1-lab/reports/group-test.txt
-```
+Location không thay đổi.
 
 Check:
 
 ```bash
-ls -l /srv/day1-lab/reports/group-test.txt
+pwd
 ```
 
-Set group:
+---
+
+# 43. Home shortcut
 
 ```bash
-sudo chgrp d1opsgrp /srv/day1-lab/reports/group-test.txt
+cd ~
+pwd
+```
+
+---
+
+# 44. Previous directory
+
+Trong nhiều shells:
+
+```bash
+cd -
+```
+
+chuyển về previous working directory.
+
+Đây là tiện ích hữu ích nhưng đừng dùng nếu bạn không chắc previous location trong destructive workflow.
+
+---
+
+# 45. Navigation challenge
+
+Không dùng GUI.
+
+Đi từ:
+
+```text
+/home/student
+```
+
+đến:
+
+```text
+/home/student/day1_lab/navigation/a/b/c
+```
+
+bằng absolute path.
+
+Sau đó về:
+
+```text
+/home/student/day1_lab/navigation/a
+```
+
+bằng relative path.
+
+Verify mỗi lần:
+
+```bash
+pwd
+```
+
+---
+
+# 46. Evidence
+
+```bash
+pwd | tee ~/day1_evidence_navigation_final.txt
+```
+
+Nhưng một output cuối chưa chứng minh toàn bộ exercise.
+
+Lab journal nên ghi các paths đã đi qua.
+
+---
+
+# 47. LAB 6 — File và Directory Operations
+
+## Objective
+
+Thực hành:
+
+```text
+mkdir
+touch
+cp
+mv
+rm
+rmdir
+```
+
+theo safe workflow.
+
+---
+
+# 48. Tạo structure
+
+```bash
+cd ~/day1_lab
+```
+
+```bash
+# [CHANGE]
+mkdir -p files/{input,processing,output,archive}
 ```
 
 Verify:
 
 ```bash
-ls -l /srv/day1-lab/reports/group-test.txt
+find files -maxdepth 2 -type d | sort
+```
+
+Expected:
+
+```text
+files
+files/archive
+files/input
+files/output
+files/processing
 ```
 
 ---
 
-# PHASE 14 — FILE PERMISSIONS
+# 49. Tạo file
 
-# 68. Requirement
+```bash
+# [CHANGE]
+touch files/input/report01.txt
+```
 
-Directory:
+Verify:
+
+```bash
+ls -l files/input/report01.txt
+```
+
+---
+
+# 50. Ghi test data
+
+```bash
+# [CHANGE]
+printf '%s\n' \
+'INFO application started' \
+'WARN disk usage 75%' \
+'ERROR connection failed' \
+'INFO retry started' \
+'ERROR connection failed' \
+> files/input/application.log
+```
+
+Lưu ý:
 
 ```text
-d1ops: rwx
-d1opsgrp: r-x
-others: ---
+>
+```
+
+sẽ truncate destination nếu file đã tồn tại.
+
+Vì đây là lab file mới nên được phép.
+
+Trong production cần inspect trước.
+
+---
+
+# 51. Verify
+
+```bash
+cat files/input/application.log
+```
+
+Expected:
+
+```text
+INFO application started
+WARN disk usage 75%
+ERROR connection failed
+INFO retry started
+ERROR connection failed
+```
+
+---
+
+# 52. Copy
+
+```bash
+# [CHANGE]
+cp files/input/report01.txt files/processing/report01.txt
+```
+
+Verify:
+
+```bash
+ls -l files/input/report01.txt files/processing/report01.txt
+```
+
+---
+
+# 53. Copy với preservation awareness
+
+Basic Day 1:
+
+```bash
+cp source destination
+```
+
+Không nên mặc định rằng mọi metadata đều được preserve giống hệt.
+
+Trong production backup/migration cần policy/tool phù hợp.
+
+Day 1 chỉ tập basic operation.
+
+---
+
+# 54. Move
+
+```bash
+# [CHANGE]
+mv files/processing/report01.txt files/output/report01.txt
+```
+
+Verify:
+
+```bash
+ls -l files/processing
+ls -l files/output
+```
+
+Expected:
+
+```text
+processing không còn report01.txt
+output có report01.txt
+```
+
+---
+
+# 55. Rename
+
+```bash
+# [CHANGE]
+mv files/output/report01.txt files/output/report01_completed.txt
+```
+
+Verify:
+
+```bash
+ls -l files/output
+```
+
+---
+
+# 56. Safe delete workflow
+
+Trước khi delete:
+
+```bash
+pwd
+```
+
+```bash
+ls -l files/output/report01_completed.txt
+```
+
+Sau khi xác nhận đúng target:
+
+```bash
+# [DESTRUCTIVE]
+rm files/output/report01_completed.txt
+```
+
+Verify:
+
+```bash
+ls -l files/output
+```
+
+---
+
+# 57. Không dùng `rm -rf` như phản xạ
+
+Day 1 phải hình thành habit:
+
+```text
+Know target first.
+```
+
+Không:
+
+```text
+I want directory gone
+→ rm -rf
+```
+
+một cách máy móc.
+
+---
+
+# 58. `rmdir`
+
+Tạo empty directory:
+
+```bash
+mkdir files/test-empty
+```
+
+Remove:
+
+```bash
+# [DESTRUCTIVE]
+rmdir files/test-empty
+```
+
+Nếu directory không empty, `rmdir` sẽ fail.
+
+Đây là useful safety property.
+
+---
+
+# 59. LAB 7 — Searching
+
+Syllabus yêu cầu `searching exercises` nhưng không quy định exact utility nào. Các command dưới đây là common Linux choices để thực hiện yêu cầu đó. Infrastructure_Operations_14_Da…
+
+---
+
+# 60. Search filename bằng `find`
+
+```bash
+# [RO]
+find ~/day1_lab -name 'application.log'
+```
+
+Case-insensitive:
+
+```bash
+find ~/day1_lab -iname 'APPLICATION.LOG'
+```
+
+Search regular files:
+
+```bash
+find ~/day1_lab -type f
+```
+
+---
+
+# 61. Search directories
+
+```bash
+find ~/day1_lab -type d
+```
+
+---
+
+# 62. Search theo name pattern
+
+```bash
+find ~/day1_lab -type f -name '*.log'
+```
+
+---
+
+# 63. Operational warning với `find`
+
+`find` có thể kết hợp actions mang tính destructive.
+
+Trong Day 1 chỉ dùng search/read-only forms.
+
+Không cần sử dụng:
+
+```text
+-delete
+-exec rm
+```
+
+để học search.
+
+---
+
+# 64. Search text bằng `grep`
+
+```bash
+grep 'ERROR' ~/day1_lab/files/input/application.log
+```
+
+Expected:
+
+```text
+ERROR connection failed
+ERROR connection failed
+```
+
+---
+
+# 65. Case-insensitive search
+
+```bash
+grep -i 'error' ~/day1_lab/files/input/application.log
+```
+
+---
+
+# 66. Hiển thị line number
+
+```bash
+grep -n 'ERROR' ~/day1_lab/files/input/application.log
+```
+
+Expected dạng:
+
+```text
+3:ERROR connection failed
+5:ERROR connection failed
+```
+
+Line numbers phụ thuộc nội dung file.
+
+---
+
+# 67. LAB 8 — Basic Text Processing
+
+Syllabus yêu cầu `text-processing exercises`, nhưng không chỉ định bộ command cụ thể. Để tránh đi quá sâu sang Day 2, phần này chỉ sử dụng basic utilities; `awk`, `sed` và regular expressions sẽ được học sâu hơn ở Day 2. Infrastructure_Operations_14_Da…
+
+---
+
+# 68. `head`
+
+```bash
+head ~/day1_lab/files/input/application.log
+```
+
+Với file nhỏ sẽ hiển thị toàn bộ nếu ít hơn default number of lines.
+
+---
+
+# 69. `tail`
+
+```bash
+tail ~/day1_lab/files/input/application.log
+```
+
+---
+
+# 70. Count lines
+
+```bash
+wc -l ~/day1_lab/files/input/application.log
+```
+
+Với dữ liệu mẫu:
+
+```text
+5
+```
+
+---
+
+# 71. Pipeline
+
+```bash
+grep 'ERROR' ~/day1_lab/files/input/application.log | wc -l
+```
+
+Expected:
+
+```text
+2
+```
+
+Data flow:
+
+```text
+application.log
+     ↓
+grep ERROR
+     ↓
+2 matching lines
+     ↓
+wc -l
+     ↓
+2
+```
+
+---
+
+# 72. Sort
+
+```bash
+grep 'ERROR' ~/day1_lab/files/input/application.log | sort
+```
+
+---
+
+# 73. Count duplicate messages
+
+```bash
+grep 'ERROR' ~/day1_lab/files/input/application.log |
+sort |
+uniq -c
+```
+
+Expected conceptually:
+
+```text
+2 ERROR connection failed
+```
+
+Tại sao cần `sort`?
+
+`uniq` xử lý adjacent repeated lines; `sort` gom identical lines lại gần nhau.
+
+---
+
+# 74. Redirect filtered output
+
+```bash
+# [CHANGE]
+grep 'ERROR' ~/day1_lab/files/input/application.log \
+> ~/day1_lab/files/output/errors.txt
+```
+
+Verify:
+
+```bash
+cat ~/day1_lab/files/output/errors.txt
+```
+
+---
+
+# 75. Append
+
+```bash
+# [CHANGE]
+grep 'WARN' ~/day1_lab/files/input/application.log \
+>> ~/day1_lab/files/output/errors.txt
+```
+
+Verify:
+
+```bash
+cat ~/day1_lab/files/output/errors.txt
+```
+
+Bạn phải nhìn thấy ERROR lines cũ cùng WARN line append sau đó.
+
+---
+
+# 76. Redirect stderr exercise
+
+```bash
+ls /path-that-does-not-exist 2> ~/day1_lab/files/output/error_output.txt
+```
+
+Command sẽ fail.
+
+Kiểm tra:
+
+```bash
+cat ~/day1_lab/files/output/error_output.txt
+```
+
+Đây là controlled negative test.
+
+---
+
+# 77. Verify exit code
+
+Ngay sau failed command:
+
+```bash
+echo $?
+```
+
+Bạn sẽ nhận non-zero.
+
+Sau command thành công:
+
+```bash
+true
+echo $?
+```
+
+Expected:
+
+```text
+0
+```
+
+Exit-code handling được học sâu hơn ở Day 2, nhưng Day 1 nên hiểu success/failure concept.
+
+---
+
+# 78. LAB 9 — Controlled Users and Groups
+
+Đây là phần cần `sudo`.
+
+Trước khi thay đổi identity database phải đảm bảo các names chưa tồn tại.
+
+---
+
+# 79. Pre-check users
+
+```bash
+# [RO]
+getent passwd ops1
+```
+
+```bash
+# [RO]
+getent passwd audit1
+```
+
+Nếu output xuất hiện:
+
+> Dừng.
+
+Không dùng account đang tồn tại.
+
+Chọn controlled names khác.
+
+---
+
+# 80. Pre-check group
+
+```bash
+# [RO]
+getent group day1ops
+```
+
+Nếu group tồn tại, không assume rằng bạn được phép reuse.
+
+---
+
+# 81. Tạo group
+
+```bash
+# [CHANGE]
+sudo groupadd day1ops
+```
+
+Verify:
+
+```bash
+getent group day1ops
+```
+
+Expected dạng:
+
+```text
+day1ops:x:<GID>:
+```
+
+GID sẽ phụ thuộc environment.
+
+---
+
+# 82. Tạo user `ops1`
+
+```bash
+# [CHANGE]
+sudo useradd -m -s /bin/bash ops1
+```
+
+Các thành phần:
+
+```text
+useradd     tạo account
+-m          tạo home directory nếu cần
+-s          chọn login shell
+/bin/bash   Bash shell
+ops1        username
+```
+
+---
+
+# 83. Tạo `audit1`
+
+```bash
+# [CHANGE]
+sudo useradd -m -s /bin/bash audit1
+```
+
+---
+
+# 84. Verify accounts
+
+```bash
+getent passwd ops1
+getent passwd audit1
+```
+
+```bash
+id ops1
+id audit1
+```
+
+---
+
+# 85. Verify home
+
+```bash
+ls -ld /home/ops1 /home/audit1
+```
+
+Quan sát:
+
+```text
+owner
+group
+permissions
+```
+
+---
+
+# 86. Add `ops1` vào group
+
+```bash
+# [CHANGE]
+sudo usermod -aG day1ops ops1
+```
+
+Hai options rất quan trọng:
+
+```text
+-a = append
+-G = supplementary groups
+```
+
+---
+
+# 87. Common dangerous mistake
+
+Không nên vô tình chạy:
+
+```bash
+usermod -G day1ops ops1
+```
+
+nếu user đã có supplementary groups quan trọng.
+
+Tùy tình huống, `-G` không đi cùng `-a` có thể replace supplementary group list.
+
+Vì vậy:
+
+> Baseline existing memberships trước khi thay group.
+
+---
+
+# 88. Verify group membership
+
+```bash
+id ops1
+```
+
+Expected có:
+
+```text
+groups=...,day1ops
+```
+
+Verify từ group database:
+
+```bash
+getent group day1ops
+```
+
+---
+
+# 89. Negative verification
+
+`audit1` không nên thuộc `day1ops`:
+
+```bash
+id audit1
+```
+
+Expected:
+
+```text
+day1ops không xuất hiện
+```
+
+Đây là evidence rất quan trọng.
+
+Bạn đã tạo một:
+
+```text
+authorized identity
+```
+
+và một:
+
+```text
+unauthorized identity
+```
+
+để test access control.
+
+---
+
+# 90. Evidence before moving on
+
+```bash
+{
+    echo "=== TIMESTAMP ==="
+    date -Is
+    echo "=== OPS1 ==="
+    id ops1
+    echo "=== AUDIT1 ==="
+    id audit1
+    echo "=== GROUP ==="
+    getent group day1ops
+} | sudo tee /var/tmp/day1_users_groups_evidence.txt >/dev/null
+```
+
+Không bắt buộc đặt evidence ở `/var/tmp`; bạn có thể lưu trong home của admin.
+
+---
+
+# 91. LAB 10 — Ownership and Permissions
+
+## Objective
+
+Thiết kế resource sao cho:
+
+```text
+root owns data
+day1ops group has approved access
+ops1 can read
+audit1 cannot read
+```
+
+---
+
+# 92. Tạo lab path
+
+```bash
+# [CHANGE]
+sudo mkdir -p /srv/day1lab/permtest
+```
+
+---
+
+# 93. Tạo test data
+
+```bash
+# [CHANGE]
+printf 'Day 1 controlled data\n' |
+sudo tee /srv/day1lab/permtest/report.txt >/dev/null
+```
+
+---
+
+# 94. Baseline
+
+```bash
+# [RO]
+ls -ld /srv/day1lab/permtest
+ls -l /srv/day1lab/permtest/report.txt
+```
+
+Lưu output **trước change**.
+
+---
+
+# 95. Cấu hình directory
+
+Để isolation file-permission test rõ ràng, cho mọi user traverse/list lab directory:
+
+```bash
+# [CHANGE]
+sudo chown root:root /srv/day1lab/permtest
+```
+
+```bash
+# [CHANGE]
+sudo chmod 0755 /srv/day1lab/permtest
+```
+
+Đây là lab directory chứa test data không sensitive.
+
+---
+
+# 96. Cấu hình file ownership
+
+```bash
+# [CHANGE]
+sudo chown root:day1ops /srv/day1lab/permtest/report.txt
+```
+
+Verify:
+
+```bash
+ls -l /srv/day1lab/permtest/report.txt
+```
+
+---
+
+# 97. Cấu hình file permission
+
+Requirement:
+
+```text
+owner: read + write
+group: read
+other: none
 ```
 
 Mode:
 
 ```text
-750
+rw-r-----
 ```
 
-File:
-
-```text
-d1ops: rw-
-d1opsgrp: r--
-others: ---
-```
-
-Mode:
+Numeric:
 
 ```text
 640
 ```
 
----
-
-# 69. Directory permission
+Apply:
 
 ```bash
-sudo chmod 750 /srv/day1-lab/reports
-```
-
-Verify:
-
-```bash
-ls -ld /srv/day1-lab/reports
-```
-
-Expected:
-
-```text
-drwxr-x---
+# [CHANGE]
+sudo chmod 0640 /srv/day1lab/permtest/report.txt
 ```
 
 ---
 
-# 70. File permission
+# 98. Verify state
 
 ```bash
-sudo chmod 640 /srv/day1-lab/reports/report.txt
+ls -l /srv/day1lab/permtest/report.txt
 ```
 
-Verify:
-
-```bash
-ls -l /srv/day1-lab/reports/report.txt
-```
-
-Expected:
+Expected conceptually:
 
 ```text
--rw-r-----
+-rw-r----- ... root day1ops ... report.txt
+```
+
+Chi tiết timestamp/size khác.
+
+---
+
+# 99. Verify bằng `stat`
+
+```bash
+stat /srv/day1lab/permtest/report.txt
+```
+
+Tìm:
+
+```text
+Access:
+Uid:
+Gid:
 ```
 
 ---
 
-# 71. Numeric interpretation
+# 100. Positive access test — `ops1`
 
-For:
-
-```text
-750
-```
-
-```text
-7 = rwx
-5 = r-x
-0 = ---
-```
-
-For:
-
-```text
-640
-```
-
-```text
-6 = rw-
-4 = r--
-0 = ---
-```
-
-Bạn phải tính được chứ không chỉ nhớ.
-
----
-
-# 72. Symbolic mode exercise
-
-Tạo:
+Trước tiên verify target identity khi impersonating:
 
 ```bash
-sudo touch /srv/day1-lab/reports/symbolic-test.txt
-sudo chown d1ops:d1opsgrp /srv/day1-lab/reports/symbolic-test.txt
-```
-
-Đặt initial mode:
-
-```bash
-sudo chmod 600 /srv/day1-lab/reports/symbolic-test.txt
-```
-
-Add group read:
-
-```bash
-sudo chmod g+r /srv/day1-lab/reports/symbolic-test.txt
-```
-
-Verify:
-
-```bash
-ls -l /srv/day1-lab/reports/symbolic-test.txt
-```
-
-Expected:
-
-```text
--rw-r-----
-```
-
-Remove owner write:
-
-```bash
-sudo chmod u-w /srv/day1-lab/reports/symbolic-test.txt
-```
-
-Verify:
-
-```bash
-ls -l /srv/day1-lab/reports/symbolic-test.txt
-```
-
-Sau exercise, restore:
-
-```bash
-sudo chmod 640 /srv/day1-lab/reports/symbolic-test.txt
-```
-
----
-
-# PHASE 15 — POSITIVE FILE ACCESS TEST
-
-Configuration trông đúng chưa đủ.
-
-Phải functional test.
-
-# 73. Test `d1ops`
-
-```bash
-sudo -u d1ops cat /srv/day1-lab/reports/report.txt
-```
-
-Expected:
-
-```text
-Day 1 restricted operational report
-```
-
-Đây là positive access test.
-
----
-
-# 74. Test write by owner
-
-```bash
-sudo -u d1ops bash -c \
-'echo "verified-by-d1ops" >> /srv/day1-lab/reports/report.txt'
-```
-
-Verify:
-
-```bash
-tail /srv/day1-lab/reports/report.txt
-```
-
-Expected line:
-
-```text
-verified-by-d1ops
-```
-
----
-
-# PHASE 16 — NEGATIVE FILE ACCESS TEST
-
-# 75. `d1viewer`
-
-`d1viewer` không thuộc `d1opsgrp`.
-
-Test:
-
-```bash
-sudo -u d1viewer cat /srv/day1-lab/reports/report.txt
-```
-
-Expected:
-
-```text
-Permission denied
-```
-
-Nếu đọc được, control không đúng.
-
-Không được nói:
-
-```text
-"Permission configured rồi nên chắc chắn secure."
-```
-
-Functional denial mới là evidence mạnh.
-
----
-
-# 76. Capture negative result
-
-Có thể:
-
-```bash
-sudo -u d1viewer cat /srv/day1-lab/reports/report.txt \
-> ~/d1viewer_read_test.txt 2>&1
+sudo -u ops1 id
 ```
 
 Sau đó:
 
 ```bash
-cat ~/d1viewer_read_test.txt
+sudo -u ops1 cat /srv/day1lab/permtest/report.txt
+```
+
+Expected:
+
+```text
+Day 1 controlled data
+```
+
+Đây là **positive test**.
+
+---
+
+# 101. Negative access test — `audit1`
+
+```bash
+sudo -u audit1 id
+```
+
+Verify `day1ops` không xuất hiện.
+
+Test:
+
+```bash
+sudo -u audit1 cat /srv/day1lab/permtest/report.txt
 ```
 
 Expected:
@@ -1939,255 +1987,516 @@ Expected:
 Permission denied
 ```
 
----
-
-# 77. Parent directory importance
-
-Nếu file mode là:
-
-```text
-640
-```
-
-nhưng parent directory là:
-
-```text
-700
-```
-
-group user vẫn không access được.
-
-Kiểm tra path:
-
-```bash
-ls -ld /srv
-ls -ld /srv/day1-lab
-ls -ld /srv/day1-lab/reports
-```
-
-Đây là troubleshooting checkpoint rất quan trọng.
+Đây là **negative test**.
 
 ---
 
-# PHASE 17 — UMASK
+# 102. Tại sao test bằng `sudo -u`?
 
-# 78. Kiểm tra current `umask`
+Trong controlled lab, administrative account có thể execute command dưới identity khác để test permissions.
 
-Dưới current account:
-
-```bash
-umask
-```
-
-Có thể thấy:
+Nhưng cần hiểu limitation:
 
 ```text
-0022
+sudo -u user command
 ```
 
-hoặc giá trị khác.
+không hoàn toàn mô phỏng mọi aspect của một interactive login/session.
 
-Không được giả định.
+Nó rất hữu ích cho filesystem permission test, nhưng nếu test PAM/session/login behavior thì cần method phù hợp khác.
 
 ---
 
-# 79. Controlled test với `d1ops`
+# 103. Test write denial cho `ops1`
 
-Chạy:
+`ops1` có group mode `r--`, không có `w`.
+
+Test:
 
 ```bash
-sudo -u d1ops bash -c '
-    umask 027
-    touch /home/d1ops/umask-file.txt
-    mkdir /home/d1ops/umask-dir
-'
+sudo -u ops1 sh -c \
+'echo unauthorized-change >> /srv/day1lab/permtest/report.txt'
+```
+
+Expected:
+
+```text
+Permission denied
+```
+
+Đây là thiết kế đúng.
+
+`ops1` được:
+
+```text
+read
+```
+
+nhưng không được:
+
+```text
+write
+```
+
+---
+
+# 104. Verify data không bị thay đổi
+
+```bash
+cat /srv/day1lab/permtest/report.txt
+```
+
+Expected vẫn chỉ:
+
+```text
+Day 1 controlled data
+```
+
+---
+
+# 105. Permissions matrix
+
+Kết quả mong muốn:
+
+| Identity             | Read | Write |
+| -------------------- | ---: | ----: |
+| `root`               |  Yes |   Yes |
+| `ops1` via `day1ops` |  Yes |    No |
+| `audit1`             |   No |    No |
+
+Đây là một example rất rõ của least privilege.
+
+---
+
+# 106. LAB 11 — Directory Permission Semantics
+
+File permission một mình chưa đủ.
+
+Ta tạo directory khác để chứng minh `x` trên directory quan trọng.
+
+---
+
+# 107. Tạo secure directory
+
+```bash
+sudo mkdir -p /srv/day1lab/private
+```
+
+```bash
+printf 'private lab data\n' |
+sudo tee /srv/day1lab/private/private.txt >/dev/null
+```
+
+---
+
+# 108. Ownership
+
+```bash
+sudo chown -R root:day1ops /srv/day1lab/private
+```
+
+Vì đây là tiny controlled lab tree nên recursive change có scope rõ.
+
+Trong production không dùng `-R` mà chưa inventory target.
+
+---
+
+# 109. Directory permissions
+
+```bash
+sudo chmod 0750 /srv/day1lab/private
+```
+
+File:
+
+```bash
+sudo chmod 0640 /srv/day1lab/private/private.txt
+```
+
+---
+
+# 110. Positive test
+
+```bash
+sudo -u ops1 cat /srv/day1lab/private/private.txt
+```
+
+Expected success.
+
+---
+
+# 111. Negative test
+
+```bash
+sudo -u audit1 cat /srv/day1lab/private/private.txt
+```
+
+Expected:
+
+```text
+Permission denied
+```
+
+Trong scenario này failure có thể xảy ra ngay ở directory traversal.
+
+---
+
+# 112. Troubleshooting lesson
+
+Nếu chỉ nhìn:
+
+```bash
+ls -l /srv/day1lab/private/private.txt
+```
+
+bạn có thể bỏ sót permissions của:
+
+```text
+/srv
+/srv/day1lab
+/srv/day1lab/private
+```
+
+Khi troubleshoot nested path:
+
+```text
+/file/path/object
+```
+
+phải nghĩ tới **parent directories**.
+
+---
+
+# 113. LAB 12 — `chmod`, `chown`, `chgrp` Practice
+
+## `chmod`
+
+Symbolic:
+
+```bash
+sudo chmod g+r /srv/day1lab/permtest/report.txt
+```
+
+Remove:
+
+```bash
+sudo chmod o-r /srv/day1lab/permtest/report.txt
+```
+
+Reset expected state:
+
+```bash
+sudo chmod 0640 /srv/day1lab/permtest/report.txt
+```
+
+---
+
+# 114. `chgrp`
+
+Thay group owner:
+
+```bash
+sudo chgrp day1ops /srv/day1lab/permtest/report.txt
 ```
 
 Verify:
 
 ```bash
-ls -ld /home/d1ops/umask-dir
-ls -l /home/d1ops/umask-file.txt
-```
-
-Expected với `umask 027`:
-
-File:
-
-```text
-640
-rw-r-----
-```
-
-Directory:
-
-```text
-750
-rwxr-x---
+ls -l /srv/day1lab/permtest/report.txt
 ```
 
 ---
 
-# 80. Verify numeric mode
+# 115. `chown`
 
-Có thể dùng:
+Owner + group:
 
 ```bash
-stat -c '%A %a %U %G %n' \
-/home/d1ops/umask-file.txt \
-/home/d1ops/umask-dir
+sudo chown root:day1ops /srv/day1lab/permtest/report.txt
 ```
 
-Expected pattern:
+Verify:
 
-```text
--rw-r----- 640 ...
-drwxr-x--- 750 ...
+```bash
+stat /srv/day1lab/permtest/report.txt
 ```
 
 ---
 
-# 81. Vì sao file không thành `750`?
+# 116. Pre/post evidence pattern
 
-File base mode thường không yêu cầu execute:
+Trước change:
 
-```text
-666
+```bash
+stat /srv/day1lab/permtest/report.txt \
+| tee ~/permission_before.txt
 ```
 
-Directory base:
+Sau change:
 
-```text
-777
+```bash
+stat /srv/day1lab/permtest/report.txt \
+| tee ~/permission_after.txt
 ```
 
-Với:
+Compare:
+
+```bash
+diff -u ~/permission_before.txt ~/permission_after.txt
+```
+
+Lưu ý `stat` có timestamps thay đổi nên diff có thể chứa nhiều differences.
+
+Mục tiêu là tìm:
 
 ```text
+Mode
+UID
+GID
+```
+
+---
+
+# 117. LAB 13 — `umask`
+
+## Objective
+
+Hiểu thực nghiệm rằng `umask` ảnh hưởng permissions của newly-created objects.
+
+---
+
+# 118. Xem current umask
+
+```bash
+# [RO]
+umask
+```
+
+Lưu giá trị:
+
+```bash
+old_umask=$(umask)
+```
+
+Đây chỉ là shell variable trong current shell.
+
+---
+
+# 119. Tạo baseline object
+
+```bash
+mkdir -p ~/day1_lab/umask
+cd ~/day1_lab/umask
+```
+
+```bash
+touch before_file
+mkdir before_dir
+```
+
+Check:
+
+```bash
+ls -ld before_file before_dir
+```
+
+---
+
+# 120. Tạm thời thay umask
+
+```bash
+# [CHANGE - current shell only]
 umask 027
 ```
 
-kết quả:
-
-```text
-file → 640
-directory → 750
-```
-
----
-
-# PHASE 18 — LEAST-PRIVILEGE SUDO
-
-Đây là một trong những phần quan trọng nhất của Day 1.
-
-Chúng ta sẽ tạo một privilege cực nhỏ, chỉ cho phép `d1ops` đọc **một root-owned lab status file**.
-
-Không cấp full root.
-
----
-
-# 82. Tạo protected file
+Verify:
 
 ```bash
-sudo mkdir -p /srv/day1-lab/admin
-```
-
-```bash
-echo "DAY1_ADMIN_STATUS=OK" \
-| sudo tee /srv/day1-lab/admin/status.txt >/dev/null
-```
-
-Set ownership:
-
-```bash
-sudo chown root:root /srv/day1-lab/admin/status.txt
-```
-
-Set permission:
-
-```bash
-sudo chmod 600 /srv/day1-lab/admin/status.txt
-```
-
-Directory:
-
-```bash
-sudo chown root:root /srv/day1-lab/admin
-sudo chmod 700 /srv/day1-lab/admin
-```
-
----
-
-# 83. Prove normal user cannot read
-
-```bash
-sudo -u d1ops cat /srv/day1-lab/admin/status.txt
+umask
 ```
 
 Expected:
 
 ```text
-Permission denied
+0027
 ```
 
-Đây là BEFORE evidence.
+hoặc representation tương đương.
 
 ---
 
-# 84. Xác định executable path
-
-Chạy:
+# 121. Tạo objects mới
 
 ```bash
-command -v cat
+touch after_file
+mkdir after_dir
 ```
 
-Ví dụ có thể là:
+Check:
 
-```text
-/usr/bin/cat
+```bash
+ls -ld after_file after_dir
 ```
 
-**Phải sử dụng path thực tế của lab.**
-
-Không hard-code nếu output khác.
-
-Trong các command dưới đây tôi giả định:
+Typical expectation với normal tools:
 
 ```text
-/usr/bin/cat
+after_file → 640
+after_dir  → 750
+```
+
+Tức:
+
+```text
+file base 666
+mask      027
+result    640
+```
+
+và:
+
+```text
+dir base  777
+mask      027
+result    750
 ```
 
 ---
 
-# 85. Tạo sudoers fragment
+# 122. Restore umask
 
-Dùng:
+Rất quan trọng.
 
 ```bash
-sudo visudo -f /etc/sudoers.d/day1-d1ops
+# [CHANGE]
+umask "$old_umask"
 ```
 
-Trong lab có thể đặt:
+Verify:
 
-```text
-d1ops ALL=(root) NOPASSWD: /usr/bin/cat /srv/day1-lab/admin/status.txt
+```bash
+umask
 ```
 
-`NOPASSWD` ở đây chỉ được dùng để tránh yêu cầu tạo/chia sẻ password cho account training và chỉ grant **một exact read-only lab command**.
-
-Không suy rộng pattern này thành production policy.
-
-Production phải theo organization security policy.
+Phải trở lại value ban đầu.
 
 ---
 
-# 86. Validate syntax
+# 123. Troubleshooting
 
-Sau khi save:
+Nếu result không đúng textbook expectation, nhớ rằng:
+
+> Application có thể request initial mode khác.
+
+`umask` loại bỏ bits; nó không đảm bảo mọi program tạo files bằng cùng requested mode.
+
+---
+
+# 124. LAB 14 — Least-Privilege `sudo`
+
+Đây là phần có risk cao hơn các lab trước vì liên quan privileged authorization.
+
+Chỉ thực hiện trên lab VM.
+
+Không copy rule này sang production.
+
+---
+
+# 125. Objective
+
+Thiết kế:
+
+```text
+ops1
+ │
+ │ sudo
+ ▼
+ONLY one harmless lab command
+```
+
+Cho phép:
+
+```text
+create /var/tmp/day1-sudo-proof
+```
+
+Không cho phép:
+
+```text
+arbitrary root commands
+```
+
+---
+
+# 126. Chọn command an toàn
+
+Chúng ta dùng:
+
+```text
+/usr/bin/touch /var/tmp/day1-sudo-proof
+```
+
+Trước hết xác nhận actual path:
 
 ```bash
-sudo visudo -cf /etc/sudoers.d/day1-d1ops
+# [RO]
+command -v touch
+```
+
+Trên nhiều RHEL systems expected:
+
+```text
+/usr/bin/touch
+```
+
+Nếu path khác, dùng actual path.
+
+Đừng hard-code path không đúng.
+
+---
+
+# 127. Pre-check `ops1`
+
+```bash
+id ops1
+```
+
+Đảm bảo `ops1` không phải privileged account ngoài mục tiêu lab.
+
+---
+
+# 128. Tạo sudoers candidate file trước
+
+Không viết invalid syntax trực tiếp vào active policy.
+
+Tạo staging file:
+
+```bash
+# [CHANGE]
+printf '%s\n' \
+'ops1 ALL=(root) NOPASSWD: /usr/bin/touch /var/tmp/day1-sudo-proof' \
+| sudo tee /tmp/day1-ops1.sudoers >/dev/null
+```
+
+`NOPASSWD` ở đây chỉ dùng để cho phép automated negative/positive lab test với controlled exact command.
+
+Trong production, password/authentication requirement phải theo organization policy.
+
+---
+
+# 129. Set safe mode
+
+```bash
+sudo chmod 0440 /tmp/day1-ops1.sudoers
+```
+
+---
+
+# 130. Validate syntax trước activation
+
+```bash
+# [RO]
+sudo visudo -cf /tmp/day1-ops1.sudoers
 ```
 
 Expected:
@@ -2196,108 +2505,200 @@ Expected:
 parsed OK
 ```
 
-Nếu không:
+Hoặc equivalent success result.
 
-> sửa syntax trước khi test.
+Nếu validation fail:
+
+> Không install.
+
+Sửa candidate trước.
 
 ---
 
-# 87. Verify sudoers fragment metadata
+# 131. Install sudoers drop-in
+
+Chỉ sau successful validation:
 
 ```bash
-sudo ls -l /etc/sudoers.d/day1-d1ops
+# [CHANGE]
+sudo install \
+-o root \
+-g root \
+-m 0440 \
+/tmp/day1-ops1.sudoers \
+/etc/sudoers.d/day1-ops1
 ```
-
-Bạn không cần dump toàn bộ production sudo policy vào evidence.
-
-Chỉ capture lab fragment/context đủ dùng.
 
 ---
 
-# 88. Check from `d1ops`
+# 132. Validate toàn bộ sudo configuration
 
 ```bash
-sudo -u d1ops sudo -l
+# [RO]
+sudo visudo -cf /etc/sudoers
 ```
 
-Output phải thể hiện exact command được permit.
+Expected no syntax errors.
 
----
+Nếu lỗi:
 
-# 89. Positive sudo test
+> Rollback ngay file vừa tạo.
 
 ```bash
-sudo -u d1ops sudo -n \
-/usr/bin/cat /srv/day1-lab/admin/status.txt
+sudo rm /etc/sudoers.d/day1-ops1
 ```
 
-Expected:
-
-```text
-DAY1_ADMIN_STATUS=OK
-```
-
-`-n` nghĩa là non-interactive; nếu password bị yêu cầu, command fail thay vì prompt.
+sau đó revalidate.
 
 ---
 
-# 90. Negative sudo test
+# 133. Positive sudo test
 
-Test một command không được grant:
+Từ admin account:
 
 ```bash
-sudo -u d1ops sudo -n \
-/usr/bin/cat /etc/shadow
+sudo -u ops1 -H bash -lc \
+'sudo -n /usr/bin/touch /var/tmp/day1-sudo-proof'
 ```
 
-Expected:
-
-```text
-not allowed
-```
-
-hoặc policy-denied message tương đương.
-
-Điểm quan trọng:
-
-```text
-/etc/shadow must NOT be displayed
-```
-
-Nếu nó hiển thị, account có privilege rộng hơn dự kiến và lab phải dừng để review.
+Expected không báo permission error.
 
 ---
 
-# 91. Đây là chứng minh least privilege
+# 134. Verify result
 
-Requirement:
-
-```text
-Allowed:
-cat /srv/day1-lab/admin/status.txt
+```bash
+ls -l /var/tmp/day1-sudo-proof
 ```
 
-Denied:
+Expected owner:
 
 ```text
-cat /etc/shadow
+root
 ```
 
-Vậy evidence phải có cả hai.
+Điều này chứng minh command đã được elevated.
 
 ---
 
-# PHASE 19 — SSH KEY GENERATION
+# 135. Negative sudo test
 
-Day 1 yêu cầu generate và configure SSH keys. Infrastructure_Operations_14_Da…
+Cho `ops1` thử command không được grant:
 
-SSH key phải được tạo trên **administrative workstation**, không phải để copy private key lên server.
+```bash
+sudo -u ops1 -H bash -lc \
+'sudo -n /usr/bin/id'
+```
+
+Expected denial kiểu:
+
+```text
+user is not allowed...
+```
+
+Exact message tùy `sudo` version/configuration.
+
+Điều quan trọng:
+
+```text
+approved exact command → success
+
+unapproved command → denied
+```
 
 ---
 
-# 92. Chuẩn bị local `.ssh`
+# 136. Đây mới là least privilege verification
+
+Chỉ chứng minh:
+
+```text
+touch works
+```
+
+là chưa đủ.
+
+Bạn phải chứng minh:
+
+```text
+other sudo command does NOT work
+```
+
+---
+
+# 137. Sudo evidence
+
+Lưu:
+
+```text
+sudoers candidate validation
+sudo policy listing
+successful allowed command
+failed unauthorized command
+proof-file owner
+timestamp
+```
+
+Bạn có thể kiểm tra:
+
+```bash
+sudo -u ops1 -H bash -lc 'sudo -n -l'
+```
+
+Output cần được review cẩn thận.
+
+---
+
+# 138. Sudo rollback
+
+Sau khi hoàn tất lab:
+
+```bash
+# [CHANGE]
+sudo rm /etc/sudoers.d/day1-ops1
+```
+
+Xóa proof file:
+
+```bash
+sudo rm /var/tmp/day1-sudo-proof
+```
+
+Validate:
+
+```bash
+sudo visudo -cf /etc/sudoers
+```
+
+Verify `ops1` không còn rule:
+
+```bash
+sudo -u ops1 -H bash -lc 'sudo -n -l'
+```
+
+Expected controlled rule không còn.
+
+---
+
+# 139. LAB 15 — SSH Key Management
+
+## Objective
+
+Tạo SSH key pair an toàn trên administrative workstation và dùng public key để authenticate vào lab server.
+
+Không gửi private key cho bất kỳ ai.
+
+---
+
+# 140. Pre-check `.ssh`
 
 Trên workstation:
+
+```bash
+ls -ld ~/.ssh
+```
+
+Nếu chưa tồn tại:
 
 ```bash
 mkdir -p ~/.ssh
@@ -2306,274 +2707,651 @@ chmod 700 ~/.ssh
 
 ---
 
-# 93. Algorithm selection
+# 141. Generate lab key
 
-Phải tuân thủ organization/platform policy.
-
-Trong một lab thông thường, nếu environment cho phép có thể dùng:
-
-```bash
-ssh-keygen -t ed25519 \
--f ~/.ssh/day1_rhel_lab \
--C "day1-lab"
-```
-
-Nếu môi trường có compliance/FIPS hoặc algorithm policy riêng, dùng algorithm mà policy yêu cầu thay vì ép dùng ví dụ trên.
-
-Khi được hỏi passphrase:
-
-> dùng một local passphrase phù hợp policy và **không chia sẻ nó cho tôi hoặc đưa vào evidence**.
-
----
-
-# 94. Files được tạo
+Modern OpenSSH environments thường hỗ trợ `ed25519`.
 
 Ví dụ:
 
-```text
-~/.ssh/day1_rhel_lab
+```bash
+ssh-keygen \
+-t ed25519 \
+-f ~/.ssh/day1_lab_ed25519 \
+-C "day1-lab"
 ```
 
-là private key.
+Bạn sẽ được hỏi passphrase.
 
-```text
-~/.ssh/day1_rhel_lab.pub
-```
+Sử dụng passphrase phù hợp nếu lab/policy cho phép.
 
-là public key.
+Không chia sẻ passphrase.
+
+Nếu environment/security policy, FIPS mode hoặc OpenSSH version không hỗ trợ/không cho phép `ed25519`, phải dùng algorithm được organization approve thay vì tự ý bypass policy.
 
 ---
 
-# 95. Verify permissions
-
-```bash
-ls -l ~/.ssh/day1_rhel_lab*
-```
-
-Private key phải được bảo vệ.
-
-Nếu cần:
-
-```bash
-chmod 600 ~/.ssh/day1_rhel_lab
-```
-
-Public key có thể readable hơn vì không phải secret theo cùng nghĩa.
-
----
-
-# 96. Fingerprint
-
-```bash
-ssh-keygen -lf ~/.ssh/day1_rhel_lab.pub
-```
-
-Evidence nên lưu **fingerprint** thay vì private key content.
-
-Ví dụ evidence:
+# 142. Files được tạo
 
 ```text
-Key purpose: Day 1 Lab
-Algorithm: <actual output>
-Fingerprint: SHA256:...
-Private key: NOT INCLUDED
+~/.ssh/day1_lab_ed25519
+~/.ssh/day1_lab_ed25519.pub
+```
+
+Phân biệt:
+
+```text
+day1_lab_ed25519
+= PRIVATE KEY
+
+day1_lab_ed25519.pub
+= PUBLIC KEY
 ```
 
 ---
 
-# PHASE 20 — CONFIGURE SSH PUBLIC KEY
+# 143. Verify private key permissions
 
-Có nhiều bootstrap methods tùy environment.
+```bash
+ls -l ~/.ssh/day1_lab_ed25519
+```
 
-Không thay `sshd_config` ở Day 1.
+Private key phải được restrictive.
+
+OpenSSH client có thể từ chối sử dụng private key nếu permissions quá open.
 
 ---
 
-# 97. Method A — `ssh-copy-id`
+# 144. Public key fingerprint
 
-Nếu server cho phép authorized bootstrap authentication và procedure cho phép:
+```bash
+ssh-keygen -lf ~/.ssh/day1_lab_ed25519.pub
+```
+
+Output dạng:
+
+```text
+256 SHA256:... day1-lab ...
+```
+
+Fingerprint là evidence hữu ích.
+
+Không cần chụp private-key contents.
+
+---
+
+# 145. Backup authorized_keys trước modification
+
+Trước khi thêm key vào existing lab account, login bằng existing approved method.
+
+Trên target:
+
+```bash
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+```
+
+Nếu `authorized_keys` đã tồn tại:
+
+```bash
+cp -a ~/.ssh/authorized_keys \
+~/.ssh/authorized_keys.pre-day1
+```
+
+Lưu ý:
+
+Nếu file backup đã tồn tại từ lab cũ, không overwrite blindly.
+
+Bạn có thể thêm timestamp:
+
+```bash
+cp -a ~/.ssh/authorized_keys \
+~/.ssh/authorized_keys.pre-day1.$(date +%Y%m%d%H%M%S)
+```
+
+---
+
+# 146. Install public key — preferred helper
+
+Nếu existing SSH authentication method cho phép, từ workstation:
 
 ```bash
 ssh-copy-id \
--i ~/.ssh/day1_rhel_lab.pub \
-d1ops@LAB_HOST
+-i ~/.ssh/day1_lab_ed25519.pub \
+student@rhel-lab01
 ```
 
-Phương thức này có thể yêu cầu existing authentication.
-
-Nếu password login bị disable thì method này có thể không phù hợp.
+Tool sẽ copy **public key**, không phải private key.
 
 ---
 
-# 98. Method B — Admin-controlled key installation
+# 147. Verify server-side authorization file
 
-Nếu bạn đã SSH vào server bằng existing `labadmin`, public key có thể được provision theo approved procedure.
-
-Trên server, tạo:
+Trên target:
 
 ```bash
-sudo install -d \
--m 700 \
--o d1ops \
--g d1ops \
-/home/d1ops/.ssh
+ls -ld ~/.ssh
 ```
 
-Sau đó public key được đưa vào:
+```bash
+ls -l ~/.ssh/authorized_keys
+```
+
+Bạn cần quan tâm:
 
 ```text
-/home/d1ops/.ssh/authorized_keys
+owner
+group
+permissions
 ```
 
-bằng approved secure method.
+Không paste contents chứa nhiều users' public keys vào public evidence nếu organization coi đó là sensitive operational information.
 
-Không paste private key.
+Fingerprint là evidence tốt hơn.
 
 ---
 
-# 99. Set ownership
+# 148. Positive SSH test
 
-```bash
-sudo chown -R d1ops:d1ops /home/d1ops/.ssh
-```
-
-Ở đây recursive operation chỉ tác động dedicated `.ssh` directory vừa tạo cho lab account.
-
-Trong production, recursive `chown` luôn cần review scope.
-
----
-
-# 100. Directory permission
-
-```bash
-sudo chmod 700 /home/d1ops/.ssh
-```
-
----
-
-# 101. `authorized_keys`
-
-```bash
-sudo chmod 600 /home/d1ops/.ssh/authorized_keys
-```
-
-Verify:
-
-```bash
-sudo ls -ld /home/d1ops/.ssh
-sudo ls -l /home/d1ops/.ssh/authorized_keys
-```
-
-Expected pattern:
-
-```text
-drwx------ d1ops d1ops .ssh
--rw------- d1ops d1ops authorized_keys
-```
-
-Exact timestamps/sizes khác nhau.
-
----
-
-# PHASE 21 — POSITIVE SSH VERIFICATION
-
-Trên workstation:
+Từ workstation:
 
 ```bash
 ssh \
--i ~/.ssh/day1_rhel_lab \
-d1ops@LAB_HOST
-```
-
-Nếu host key prompt xuất hiện lần đầu, phải xác minh fingerprint theo approved lab information trước khi accept.
-
-Không auto-accept một hostname lạ.
-
----
-
-# 102. Sau login
-
-Chạy:
-
-```bash
-whoami
-hostname
-id
-pwd
+-i ~/.ssh/day1_lab_ed25519 \
+-o IdentitiesOnly=yes \
+student@rhel-lab01 \
+'hostname; whoami; id'
 ```
 
 Expected:
 
 ```text
-whoami → d1ops
-hostname → lab server
-id → expected UID/groups including d1opsgrp
-pwd → /home/d1ops
+rhel-lab01
+student
+uid=...
+```
+
+Điều cần chứng minh là:
+
+```text
+correct key
+→ correct host
+→ correct account
 ```
 
 ---
 
-# 103. One-command verification
+# 149. Vì sao dùng `IdentitiesOnly=yes`?
 
-Có thể từ workstation:
+SSH client/agent có thể có nhiều identities.
+
+Nếu bạn không giới hạn identity, connection có thể thành công nhờ một key khác và bạn tưởng rằng lab key hoạt động.
+
+`IdentitiesOnly=yes` làm test rõ ràng hơn.
+
+---
+
+# 150. SSH verbose troubleshooting
+
+Nếu key không work:
 
 ```bash
 ssh \
--i ~/.ssh/day1_rhel_lab \
-d1ops@LAB_HOST \
-'whoami; hostname; id'
+-v \
+-i ~/.ssh/day1_lab_ed25519 \
+-o IdentitiesOnly=yes \
+student@rhel-lab01
 ```
 
-Output là evidence rất tốt vì chứng minh:
+`-v` cung cấp debug information.
+
+Nếu cần sâu hơn có thể dùng additional verbosity nhưng tránh dump unnecessarily large logs hoặc information không cần thiết.
+
+---
+
+# 151. Không thay server config ngay
+
+Nếu SSH key fail, không bắt đầu bằng:
 
 ```text
-SSH authentication succeeded
-+
-correct identity
-+
-correct host
-+
-correct group membership
+edit sshd_config
+restart sshd
+disable security
+```
+
+Trước tiên kiểm tra:
+
+```text
+target hostname
+username
+key actually offered
+public key actually installed
+ownership
+permissions
+account state
 ```
 
 ---
 
-# PHASE 22 — NEGATIVE SSH VERIFICATION
+# 152. LAB 16 — Denied SSH Access Test
 
 Syllabus yêu cầu verify **authorized and denied access**. Infrastructure_Operations_14_Da…
 
-Ta sẽ không phá public key hợp lệ.
-
-Thay vào đó tạo một second key chưa được authorize.
+Tạo một second key nhưng **không install public key**.
 
 ---
 
-# 104. Generate unapproved key
-
-Trên workstation:
+# 153. Generate unauthorized test key
 
 ```bash
-ssh-keygen -t ed25519 \
--f ~/.ssh/day1_unapproved \
--C "day1-unapproved-test"
+ssh-keygen \
+-t ed25519 \
+-f ~/.ssh/day1_denied_ed25519 \
+-C "day1-denied-test"
 ```
 
-Nếu environment policy yêu cầu algorithm khác, dùng policy-approved algorithm.
-
-Private key vẫn phải được bảo vệ.
+Đây vẫn là secret private key của lab; không đưa vào evidence.
 
 ---
 
-# 105. Force client chỉ sử dụng unapproved key
+# 154. Confirm fingerprint
+
+```bash
+ssh-keygen -lf ~/.ssh/day1_denied_ed25519.pub
+```
+
+---
+
+# 155. Negative authentication test
 
 ```bash
 ssh \
+-i ~/.ssh/day1_denied_ed25519 \
 -o IdentitiesOnly=yes \
--o PreferredAuthentications=publickey \
--o PasswordAuthentication=no \
--o KbdInteractiveAuthentication=no \
--i ~/.ssh/day1_unapproved \
-d1ops@LAB_HOST
+-o BatchMode=yes \
+student@rhel-lab01 \
+'true'
+```
+
+`BatchMode=yes` giúp không fallback vào interactive password prompt trong test automation context.
+
+Expected:
+
+```text
+Permission denied ...
+```
+
+Exact authentication methods được hiển thị tùy server.
+
+---
+
+# 156. Kiểm tra exit status
+
+Ngay sau failed SSH:
+
+```bash
+echo $?
+```
+
+Expected:
+
+```text
+non-zero
+```
+
+Đây là correct result của negative test.
+
+Không phải mọi non-zero trong security test đều là "lab failure".
+
+Ở đây nó chứng minh unauthorized key bị reject.
+
+---
+
+# 157. Positive vs Negative evidence
+
+Bạn phải có hai pieces:
+
+```text
+Installed authorized key
+→ login success
+
+Uninstalled unauthorized key
+→ login failure
+```
+
+Nếu chỉ có success test, chưa chứng minh enforcement đầy đủ.
+
+---
+
+# 158. LAB 17 — Secure SSH Key Handling
+
+## Kiểm tra local files
+
+```bash
+ls -l ~/.ssh/day1_lab_ed25519*
+```
+
+Bạn phải biết file nào là private/public.
+
+---
+
+# 159. Không `cat` private key vào terminal recorder
+
+Không làm:
+
+```text
+cat ~/.ssh/day1_lab_ed25519
+```
+
+trong evidence session.
+
+Điều đó không giúp verification và tạo risk leakage.
+
+---
+
+# 160. Public key inspection
+
+Nếu cần:
+
+```bash
+cat ~/.ssh/day1_lab_ed25519.pub
+```
+
+Nhưng trong audit evidence, fingerprint thường gọn hơn:
+
+```bash
+ssh-keygen -lf ~/.ssh/day1_lab_ed25519.pub
+```
+
+---
+
+# 161. LAB 18 — Command History and Evidence
+
+## Objective
+
+Document executed commands mà không biến shell history thành nơi chứa secrets.
+
+---
+
+# 162. Xem history
+
+```bash
+history
+```
+
+Không nên coi đây là source duy nhất.
+
+History có thể thiếu:
+
+```text
+timestamps
+outputs
+commands from other sessions
+full context
+```
+
+---
+
+# 163. Timestamps cho current history display
+
+Trong Bash, có thể tạm thời:
+
+```bash
+export HISTTIMEFORMAT='%F %T %z '
+```
+
+Sau đó:
+
+```bash
+history
+```
+
+Lưu ý history entries cũ chỉ có meaningful timestamps nếu shell history data đã lưu time metadata phù hợp.
+
+Không mặc định coi output này là authoritative audit log.
+
+---
+
+# 164. Evidence strategy tốt hơn
+
+Đối với important checks, dùng:
+
+```bash
+command | tee evidence.txt
+```
+
+Ví dụ:
+
+```bash
+id ops1 |
+tee ~/day1_evidence/04_users_groups/ops1_id.txt
+```
+
+---
+
+# 165. Capture stderr cùng stdout khi cần
+
+```bash
+command > evidence.txt 2>&1
+```
+
+hoặc:
+
+```bash
+command 2>&1 | tee evidence.txt
+```
+
+Nhưng nhớ:
+
+> Evidence chứa raw output. Kiểm tra secret trước khi share.
+
+---
+
+# 166. Optional terminal transcript
+
+Utility `script` có thể capture terminal session nếu installed:
+
+```bash
+script ~/day1_session.log
+```
+
+Khi xong:
+
+```bash
+exit
+```
+
+Nhưng **không dùng session recording khi bạn có nguy cơ nhập/display secrets**.
+
+Nếu dùng `ssh-keygen` với passphrase, đảm bảo recording approach không capture sensitive input theo cách không mong muốn.
+
+---
+
+# 167. LAB 19 — Integrated Access Validation
+
+Bây giờ kết nối các phần lại.
+
+Desired state:
+
+```text
+ops1
+ ├─ exists
+ ├─ member of day1ops
+ ├─ can read approved file
+ ├─ cannot write approved file
+ ├─ cannot read unauthorized file/resource
+ └─ only has explicitly permitted sudo operation
+
+audit1
+ ├─ exists
+ ├─ not member of day1ops
+ └─ cannot read protected file
+
+student
+ └─ can SSH using approved lab key
+```
+
+---
+
+# 168. Identity validation
+
+```bash
+id ops1
+id audit1
+```
+
+Check exactly:
+
+```text
+ops1 ∈ day1ops
+audit1 ∉ day1ops
+```
+
+---
+
+# 169. Ownership validation
+
+```bash
+stat /srv/day1lab/permtest/report.txt
+```
+
+Expected conceptual:
+
+```text
+owner = root
+group = day1ops
+mode = 640
+```
+
+---
+
+# 170. Authorized read
+
+```bash
+sudo -u ops1 cat /srv/day1lab/permtest/report.txt
+```
+
+Expected success.
+
+---
+
+# 171. Unauthorized read
+
+```bash
+sudo -u audit1 cat /srv/day1lab/permtest/report.txt
+```
+
+Expected denial.
+
+---
+
+# 172. Unauthorized write
+
+```bash
+sudo -u ops1 sh -c \
+'echo TEST >> /srv/day1lab/permtest/report.txt'
+```
+
+Expected denial.
+
+---
+
+# 173. Authorized sudo
+
+Nếu sudo rule chưa cleanup:
+
+```bash
+sudo -u ops1 -H bash -lc \
+'sudo -n /usr/bin/touch /var/tmp/day1-sudo-proof'
+```
+
+Expected success.
+
+---
+
+# 174. Unauthorized sudo
+
+```bash
+sudo -u ops1 -H bash -lc \
+'sudo -n /usr/bin/id'
+```
+
+Expected denial.
+
+---
+
+# 175. Authorized SSH
+
+Từ workstation:
+
+```bash
+ssh \
+-i ~/.ssh/day1_lab_ed25519 \
+-o IdentitiesOnly=yes \
+student@rhel-lab01 \
+'hostname; whoami'
+```
+
+Expected success.
+
+---
+
+# 176. Unauthorized SSH key
+
+```bash
+ssh \
+-i ~/.ssh/day1_denied_ed25519 \
+-o IdentitiesOnly=yes \
+-o BatchMode=yes \
+student@rhel-lab01 \
+'true'
+```
+
+Expected fail.
+
+---
+
+# 177. Acceptance Matrix
+
+| Control          | Positive Test             | Negative Test            |
+| ---------------- | ------------------------- | ------------------------ |
+| Group membership | `ops1` has `day1ops`      | `audit1` does not        |
+| File read        | `ops1` reads              | `audit1` denied          |
+| File write       | root can modify           | `ops1` denied            |
+| `sudo`           | approved command succeeds | unrelated command denied |
+| SSH              | approved key works        | unknown key denied       |
+
+Nếu bạn có đủ five control outcomes này cùng evidence, bạn đã thực hiện đúng tinh thần Assignment Day 1.
+
+---
+
+# 178. FAILURE INJECTION 1 — Wrong Group Membership
+
+## Inject
+
+Tạm remove `ops1` khỏi supplementary group `day1ops`.
+
+Cách thực hiện phụ thuộc distro/tooling; trên Linux có thể dùng appropriate group-management command, nhưng không nên làm nếu bạn không chắc existing memberships.
+
+Trong lab này safest learning pattern là thay ownership của test file sang một temporary group không chứa `ops1`, thay vì phá user memberships.
+
+Ví dụ tạo:
+
+```bash
+sudo groupadd day1wrong
+```
+
+Thay group file:
+
+```bash
+sudo chgrp day1wrong /srv/day1lab/permtest/report.txt
+```
+
+---
+
+# 179. Symptom
+
+```bash
+sudo -u ops1 cat /srv/day1lab/permtest/report.txt
 ```
 
 Expected:
@@ -2582,170 +3360,563 @@ Expected:
 Permission denied
 ```
 
-Thông điệp cụ thể có thể là:
+---
 
-```text
-Permission denied (publickey)
+# 180. Troubleshooting
+
+Không sửa ngay.
+
+Collect:
+
+```bash
+id ops1
 ```
 
-hoặc server có danh sách methods khác.
+```bash
+ls -l /srv/day1lab/permtest/report.txt
+```
 
-Điểm cần chứng minh:
+Compare:
 
 ```text
-Unapproved key cannot authenticate.
+user groups = day1ops
+file group   = day1wrong
+```
+
+Root cause:
+
+```text
+group ownership mismatch
 ```
 
 ---
 
-# 106. Tại sao dùng `IdentitiesOnly=yes`?
+# 181. Rollback
 
-Nếu không, SSH agent có thể thử một authorized key khác.
-
-Lúc đó negative test có thể:
-
-```text
-unexpectedly succeed
+```bash
+sudo chgrp day1ops /srv/day1lab/permtest/report.txt
 ```
 
-mặc dù key bạn muốn test không được authorize.
+Verify:
 
-`IdentitiesOnly=yes` giúp test đúng identity file được chỉ định.
+```bash
+sudo -u ops1 cat /srv/day1lab/permtest/report.txt
+```
+
+Success phải trở lại.
 
 ---
 
-# PHASE 23 — SSH DEBUGGING
+# 182. FAILURE INJECTION 2 — Missing Directory Traverse Permission
 
-Nếu positive authentication fail:
+Baseline:
+
+```bash
+sudo chmod 0750 /srv/day1lab/private
+```
+
+Để tạo controlled failure cho group:
+
+```bash
+sudo chmod 0740 /srv/day1lab/private
+```
+
+Group có:
+
+```text
+r--
+```
+
+nhưng không có:
+
+```text
+x
+```
+
+---
+
+# 183. Symptom
+
+```bash
+sudo -u ops1 cat /srv/day1lab/private/private.txt
+```
+
+Expected:
+
+```text
+Permission denied
+```
+
+Mặc dù file itself có thể có:
+
+```text
+640 root:day1ops
+```
+
+---
+
+# 184. Investigation
+
+```bash
+ls -ld /srv/day1lab/private
+```
+
+```bash
+ls -l /srv/day1lab/private/private.txt
+```
+
+Bạn phải phát hiện:
+
+```text
+file permission looks fine
+BUT
+directory group lacks x
+```
+
+Đây là classic Linux permission troubleshooting scenario.
+
+---
+
+# 185. Rollback
+
+```bash
+sudo chmod 0750 /srv/day1lab/private
+```
+
+Verify positive access lại.
+
+---
+
+# 186. FAILURE INJECTION 3 — File Mode Too Restrictive
+
+Inject:
+
+```bash
+sudo chmod 0600 /srv/day1lab/permtest/report.txt
+```
+
+File vẫn:
+
+```text
+root:day1ops
+```
+
+nhưng group mất read.
+
+---
+
+# 187. Symptom
+
+```bash
+sudo -u ops1 cat /srv/day1lab/permtest/report.txt
+```
+
+Fail.
+
+---
+
+# 188. Diagnosis
+
+```bash
+id ops1
+```
+
+Group membership đúng.
+
+```bash
+ls -l /srv/day1lab/permtest/report.txt
+```
+
+Shows:
+
+```text
+-rw-------
+```
+
+Root cause:
+
+```text
+group read bit missing
+```
+
+---
+
+# 189. Rollback
+
+```bash
+sudo chmod 0640 /srv/day1lab/permtest/report.txt
+```
+
+Verify again.
+
+---
+
+# 190. FAILURE INJECTION 4 — Invalid `sudoers` Candidate
+
+Đây là cách an toàn để học lỗi sudoers mà **không làm hỏng active sudo configuration**.
+
+Tạo invalid temporary file:
+
+```bash
+printf '%s\n' \
+'THIS IS NOT VALID SUDOERS SYNTAX' \
+| sudo tee /tmp/day1-invalid.sudoers >/dev/null
+```
+
+Validate:
+
+```bash
+sudo visudo -cf /tmp/day1-invalid.sudoers
+```
+
+Expected failure.
+
+---
+
+# 191. Correct operational behavior
+
+Không copy file vào:
+
+```text
+/etc/sudoers.d/
+```
+
+Evidence:
+
+```text
+syntax validation failed
+candidate rejected
+active configuration unchanged
+```
+
+Đây là perfect example của:
+
+```text
+pre-change verification preventing incident
+```
+
+Cleanup:
+
+```bash
+sudo rm /tmp/day1-invalid.sudoers
+```
+
+---
+
+# 192. FAILURE INJECTION 5 — Unauthorized SSH Key
+
+Bạn đã thực hiện ở SSH negative test:
+
+```text
+Generate second key
+Do not authorize it
+Attempt login
+```
+
+Expected:
+
+```text
+authentication denied
+```
+
+Troubleshooting exercise:
+
+So sánh fingerprint:
+
+```bash
+ssh-keygen -lf ~/.ssh/day1_lab_ed25519.pub
+```
+
+với:
+
+```bash
+ssh-keygen -lf ~/.ssh/day1_denied_ed25519.pub
+```
+
+Chúng khác nhau.
+
+Chỉ authorized public key phải được server chấp nhận.
+
+---
+
+# 193. Troubleshooting Workflow — File Permission
+
+Khi gặp:
+
+```text
+Permission denied
+```
+
+đi theo thứ tự ít rủi ro:
+
+```text
+1. whoami / id
+       ↓
+2. Confirm exact path
+       ↓
+3. ls -ld parent directories
+       ↓
+4. ls -l target
+       ↓
+5. stat target
+       ↓
+6. Compare owner/group
+       ↓
+7. Compare required operation: read/write/execute
+       ↓
+8. Check group membership
+       ↓
+9. Consider ACL / SELinux if traditional mode correct
+       ↓
+10. Escalate outside Day 1 scope
+```
+
+Không bắt đầu bằng:
+
+```bash
+chmod 777
+```
+
+---
+
+# 194. Troubleshooting Workflow — SSH
+
+Khi SSH fail:
+
+```text
+Exact error first.
+```
+
+Sau đó classify.
+
+### `Permission denied`
+
+Focus:
+
+```text
+username
+key
+account
+authentication policy
+file permissions
+```
+
+### `Connection refused`
+
+Khả năng liên quan:
+
+```text
+service/listening state
+port
+```
+
+### Timeout
+
+Khả năng liên quan:
+
+```text
+network path
+firewall
+routing
+target state
+```
+
+Day 2 sẽ học networking/firewall/service investigation sâu hơn.
+
+---
+
+# 195. Troubleshooting SSH Key
+
+Client side:
 
 ```bash
 ssh -v \
+-i ~/.ssh/day1_lab_ed25519 \
 -o IdentitiesOnly=yes \
--i ~/.ssh/day1_rhel_lab \
-d1ops@LAB_HOST
+student@rhel-lab01
 ```
 
-Không vội sửa configuration.
-
-Phân tích stage.
-
----
-
-# 107. Nếu thấy timeout
-
-Có thể:
+Check:
 
 ```text
-Network / route / firewall / port
+Is correct key being offered?
+Is target user correct?
+Is target hostname correct?
 ```
 
-Không phải key issue.
-
-Day 1:
-
-```text
-collect evidence
-escalate if network change required
-```
-
----
-
-# 108. Nếu thấy host-key mismatch
-
-Không chạy ngay:
+Server-side authorized account:
 
 ```bash
-ssh-keygen -R LAB_HOST
+ls -ld ~/.ssh
+ls -l ~/.ssh/authorized_keys
 ```
 
-chỉ để bỏ warning.
-
-Phải xác minh:
+Check:
 
 ```text
-server rebuild?
-IP reused?
-host key rotated?
-wrong server?
+owner
+permissions
+authorized public key
 ```
 
-Nếu chưa xác minh:
+Không tự ý:
 
-> escalate.
+```text
+disable authentication protections
+enable root login
+disable host-key checking
+```
+
+để "fix".
 
 ---
 
-# 109. Nếu thấy key offered but rejected
+# 196. Troubleshooting `sudo`
 
-Kiểm tra:
+Nếu permitted command fail:
 
 ```bash
-sudo ls -ld /home/d1ops
-sudo ls -ld /home/d1ops/.ssh
-sudo ls -l /home/d1ops/.ssh/authorized_keys
+sudo -u ops1 -H bash -lc 'sudo -n -l'
 ```
 
-Kiểm tra ownership:
+Check:
 
 ```text
-d1ops:d1ops
+Is rule installed?
+Exact command path?
+Exact command arguments?
+Target user?
+Syntax valid?
 ```
 
-Kiểm tra đúng public key/fingerprint.
+Sudoers command matching có thể rất precise.
 
-Không chỉnh `sshd_config` Day 1.
+Rule:
+
+```text
+/usr/bin/touch /var/tmp/day1-sudo-proof
+```
+
+không có nghĩa user được phép:
+
+```text
+/usr/bin/touch /some/other/file
+```
+
+nếu rule thực sự restrict arguments theo exact configured command form.
+
+Đó là mục tiêu của least privilege.
 
 ---
 
-# PHASE 24 — COMMAND DOCUMENTATION
+# 197. LAB 20 — Evidence Collection Package
 
-Syllabus yêu cầu document executed commands. Infrastructure_Operations_14_Da…
-
-# 110. Minimum command record
-
-Mỗi meaningful operation nên có:
+Syllabus yêu cầu cuối Day 1 submit:
 
 ```text
-Timestamp
-Hostname
-User
-Purpose
-Command
-Expected result
-Actual result
-Verification
-Status
-Ticket/change reference
+system inventory
+access verification
+configuration evidence
 ```
+
+cùng documentation của executed commands. Infrastructure_Operations_14_Da…
+
+Một evidence package tốt có thể là:
+
+```text
+Day1_Evidence/
+│
+├── 00_access/
+│   ├── access_checklist.txt
+│   └── initial_identity.txt
+│
+├── 01_inventory/
+│   ├── hostname.txt
+│   ├── os_release.txt
+│   ├── kernel.txt
+│   └── system_inventory.txt
+│
+├── 02_cli/
+│   └── navigation_notes.txt
+│
+├── 03_files/
+│   ├── file_operations.txt
+│   ├── search_results.txt
+│   └── text_processing.txt
+│
+├── 04_users_groups/
+│   ├── ops1_id.txt
+│   ├── audit1_id.txt
+│   └── day1ops_group.txt
+│
+├── 05_permissions/
+│   ├── permission_baseline.txt
+│   ├── permission_final.txt
+│   ├── positive_test.txt
+│   └── negative_test.txt
+│
+├── 06_sudo/
+│   ├── sudoers_validation.txt
+│   ├── allowed_test.txt
+│   └── denied_test.txt
+│
+├── 07_ssh/
+│   ├── key_fingerprint.txt
+│   ├── authorized_test.txt
+│   └── denied_test.txt
+│
+├── 08_failures/
+│   ├── failure01_group.txt
+│   ├── failure02_directory.txt
+│   └── failure03_permission.txt
+│
+└── 09_cleanup/
+    └── cleanup_verification.txt
+```
+
+Không cần filename chính xác giống vậy.
+
+Structure và traceability mới quan trọng.
 
 ---
 
-# 111. Ví dụ record
+# 198. Mỗi evidence nên trả lời gì?
+
+Một useful evidence record phải trả lời:
+
+```text
+WHEN?
+WHO?
+WHERE?
+WHAT?
+EXPECTED?
+ACTUAL?
+RESULT?
+```
+
+Ví dụ:
 
 ```text
 Timestamp:
-2026-10-18T22:15:00+07:00
+2026-10-19T10:15:00+07:00
 
 Host:
 rhel-lab01
 
 Operator:
-labadmin
+student
 
-Purpose:
-Grant d1ops read-only sudo access to lab status file
+Test:
+Verify ops1 can read group-authorized report
 
-Change:
-Created /etc/sudoers.d/day1-d1ops
+Command:
+sudo -u ops1 cat /srv/day1lab/permtest/report.txt
 
-Verification:
-visudo -cf /etc/sudoers.d/day1-d1ops
+Expected:
+Read succeeds
 
-Positive Test:
-d1ops can read /srv/day1-lab/admin/status.txt via sudo
-
-Negative Test:
-d1ops cannot read /etc/shadow via sudo
+Observed:
+Day 1 controlled data
 
 Result:
 PASS
@@ -2753,435 +3924,155 @@ PASS
 
 ---
 
-# 112. Capturing command output
+# 199. Screenshots vs command output
 
-Pattern:
-
-```bash
-{
-    echo "Timestamp:"
-    date -Is
-
-    echo "Hostname:"
-    hostname
-
-    echo "User:"
-    whoami
-
-    echo "Verification:"
-    id d1ops
-} | tee evidence.txt
-```
-
----
-
-# 113. stderr evidence
-
-Đối với negative test:
-
-```bash
-command > evidence.txt 2>&1
-```
-
-sẽ capture stdout và stderr.
-
-Ví dụ:
-
-```bash
-sudo -u d1viewer cat /srv/day1-lab/reports/report.txt \
-> ~/negative_permission_test.txt 2>&1
-```
-
----
-
-# PHASE 25 — COMPLETE ACCESS VERIFICATION MATRIX
-
-Bạn nên có matrix cuối cùng.
-
-| Test                            | Expected | Result |
-| ------------------------------- | -------- | ------ |
-| `d1ops` exists                  | Yes      |        |
-| `d1viewer` exists               | Yes      |        |
-| `d1opsgrp` exists               | Yes      |        |
-| `d1ops` member of `d1opsgrp`    | Yes      |        |
-| `d1viewer` member of `d1opsgrp` | No       |        |
-| `d1ops` reads report            | Allowed  |        |
-| `d1viewer` reads report         | Denied   |        |
-| `d1ops` approved sudo command   | Allowed  |        |
-| `d1ops` unapproved sudo command | Denied   |        |
-| Approved SSH key                | Allowed  |        |
-| Unapproved SSH key              | Denied   |        |
-
-Nếu bất kỳ negative test nào unexpectedly succeeds:
-
-> lab security objective = FAIL cho đến khi root cause được xác định.
-
----
-
-# PHASE 26 — CONFIGURATION EVIDENCE
-
-# 114. Users/groups
-
-```bash
-getent passwd d1ops
-getent passwd d1viewer
-getent group d1opsgrp
-id d1ops
-id d1viewer
-```
-
----
-
-# 115. Ownership/permissions
-
-```bash
-ls -ld /srv/day1-lab
-ls -ld /srv/day1-lab/reports
-ls -l /srv/day1-lab/reports/report.txt
-stat /srv/day1-lab/reports/report.txt
-```
-
----
-
-# 116. `umask`
-
-Capture:
-
-```bash
-sudo -u d1ops bash -c '
-    umask 027
-    umask
-'
-```
-
-và creation result.
-
----
-
-# 117. `sudo`
-
-```bash
-sudo -u d1ops sudo -l
-```
-
-plus positive/negative tests.
-
-Không capture toàn bộ confidential enterprise sudo configuration nếu không cần.
-
----
-
-# 118. SSH
-
-Capture:
+Screenshot hữu ích cho context nhưng text output thường:
 
 ```text
-Public-key fingerprint
-authorized_keys ownership
-authorized_keys mode
-positive login identity
-negative login result
+searchable
+copyable
+diffable
+smaller
 ```
 
-Không capture:
+Nếu organization yêu cầu screenshot thì thu cả screenshot.
+
+Nhưng screenshot không nên chứa:
 
 ```text
 private key
-passphrase
+password
+secret
+unrelated confidential data
 ```
 
 ---
 
-# PHASE 27 — FAILURE INJECTION 1: WRONG FILE PERMISSION
+# 200. Evidence integrity
 
-Failure Injection chỉ áp dụng trong lab.
+Sau khi thu evidence, không edit raw file để "làm đẹp".
 
-# 119. Inject
-
-Hiện report:
-
-```bash
-ls -l /srv/day1-lab/reports/report.txt
-```
-
-Backup current mode evidence.
-
-Sau đó intentionally remove group read:
-
-```bash
-sudo chmod 600 /srv/day1-lab/reports/report.txt
-```
-
----
-
-# 120. Symptom
-
-Test một group-authorized identity nếu bạn có một separate group reader.
-
-Với current setup `d1ops` là owner nên vẫn đọc được.
-
-Để tạo group-reader scenario an toàn, add `d1viewer` tạm thời vào group:
-
-```bash
-sudo usermod -aG d1opsgrp d1viewer
-```
-
-Fresh test:
-
-```bash
-sudo -u d1viewer cat /srv/day1-lab/reports/report.txt
-```
-
-Với mode `600`, expected:
+Nếu cần explanation:
 
 ```text
-Permission denied
+raw evidence
++
+separate analyst note
 ```
 
----
-
-# 121. Troubleshoot
-
-Inspect:
-
-```bash
-id d1viewer
-```
-
-```bash
-ls -ld /srv/day1-lab/reports
-```
-
-```bash
-ls -l /srv/day1-lab/reports/report.txt
-```
-
-Reasoning:
+tốt hơn:
 
 ```text
-Group membership correct
-Parent traverse correct
-File group correct
-But group read bit absent
-→ root cause identified
+modify raw evidence
 ```
 
 ---
 
-# 122. Correct
+# 201. LAB 21 — Cleanup và Rollback
 
-Restore:
+Cleanup là một phần của lab, không phải việc tùy chọn.
 
-```bash
-sudo chmod 640 /srv/day1-lab/reports/report.txt
-```
-
-Retest:
-
-```bash
-sudo -u d1viewer cat /srv/day1-lab/reports/report.txt
-```
-
-Expected:
-
-```text
-success
-```
-
-Sau Failure Injection, remove temporary membership để trở lại baseline:
-
-```bash
-sudo gpasswd -d d1viewer d1opsgrp
-```
-
-Verify:
-
-```bash
-id d1viewer
-```
-
-Retest expected denial.
+Thứ tự hợp lý là remove dependencies từ trên xuống.
 
 ---
 
-# PHASE 28 — FAILURE INJECTION 2: MISSING GROUP MEMBERSHIP
+# 202. Remove sudo rule trước
 
-# 123. Inject
-
-Requirement giả định:
-
-```text
-d1viewer should temporarily have group access
-```
-
-Add:
+Nếu còn:
 
 ```bash
-sudo usermod -aG d1opsgrp d1viewer
-```
-
-Verify success.
-
-Sau đó intentionally remove:
-
-```bash
-sudo gpasswd -d d1viewer d1opsgrp
-```
-
----
-
-# 124. Symptom
-
-```bash
-sudo -u d1viewer cat /srv/day1-lab/reports/report.txt
-```
-
-Expected:
-
-```text
-Permission denied
-```
-
----
-
-# 125. Investigation order
-
-Đừng chạy `chmod 777`.
-
-Chạy:
-
-```bash
-id d1viewer
-```
-
-Sau đó:
-
-```bash
-ls -l /srv/day1-lab/reports/report.txt
-```
-
-Bạn sẽ thấy:
-
-```text
-file group = d1opsgrp
-group permission = r--
-d1viewer not member of d1opsgrp
-```
-
-Root cause:
-
-```text
-identity/group membership
-```
-
-không phải file mode.
-
----
-
-# 126. Fix
-
-Nếu requirement cần access:
-
-```bash
-sudo usermod -aG d1opsgrp d1viewer
-```
-
-Verify:
-
-```bash
-id d1viewer
-```
-
-Retest.
-
-Sau Failure Injection hoàn tất, restore intended Day 1 baseline bằng cách remove membership.
-
----
-
-# PHASE 29 — FAILURE INJECTION 3: BAD SUDO POLICY CANDIDATE
-
-Không inject syntax error trực tiếp vào active `/etc/sudoers`.
-
-Ta kiểm tra một **offline candidate file**.
-
-# 127. Tạo invalid candidate
-
-```bash
-cat > ~/bad-sudoers-test <<'EOF'
-this is not valid sudoers syntax
-EOF
+sudo rm /etc/sudoers.d/day1-ops1
 ```
 
 Validate:
 
 ```bash
-sudo visudo -cf ~/bad-sudoers-test
-```
-
-Expected:
-
-```text
-syntax error
+sudo visudo -cf /etc/sudoers
 ```
 
 ---
 
-# 128. Lesson
-
-Correct operator response:
-
-```text
-Validation failed
-→ Do not deploy
-```
-
-Sai response:
-
-```text
-Copy it into /etc/sudoers.d and see what happens
-```
-
-Đây chính là operational safety.
-
----
-
-# PHASE 30 — FAILURE INJECTION 4: UNAUTHORIZED SSH KEY
-
-Negative SSH key test ở trên chính là một failure injection an toàn.
-
-Expected:
-
-```text
-Approved key → success
-Unapproved key → authentication failure
-```
-
-Troubleshooting phải chứng minh:
-
-```text
-Network works
-Host identified
-Username correct
-But selected public key is not authorized
-```
-
-Không cần phá server configuration.
-
----
-
-# PHASE 31 — FAILURE INJECTION 5: WRONG RELATIVE PATH
-
-# 129. Scenario
-
-Từ:
+# 203. Remove sudo proof
 
 ```bash
-cd ~/day1-lab/input
+sudo rm -f /var/tmp/day1-sudo-proof
 ```
 
-thử:
+`-f` ở đây được dùng trên exact known lab file.
+
+Không extrapolate thành habit cho arbitrary paths.
+
+---
+
+# 204. SSH key cleanup
+
+Nếu key chỉ dành cho lab và phải revoke:
+
+1. Identify exact Day 1 public key bằng fingerprint/comment.
+2. Backup current `authorized_keys`.
+3. Remove **chính xác entry của lab key**.
+4. Không overwrite các authorized keys khác.
+5. Verify denied access sau removal.
+
+Đừng đơn giản restore một old backup nếu trong thời gian đó có legitimate keys khác được thêm.
+
+---
+
+# 205. Verify SSH revocation
+
+Sau khi remove Day 1 authorized key:
 
 ```bash
-cat output/server_counts.txt
+ssh \
+-i ~/.ssh/day1_lab_ed25519 \
+-o IdentitiesOnly=yes \
+-o BatchMode=yes \
+student@rhel-lab01 \
+'true'
+```
+
+Nếu không còn alternative authorization cho key đó, expected denied.
+
+---
+
+# 206. Local private key cleanup
+
+Nếu training policy yêu cầu remove test keys:
+
+```bash
+rm ~/.ssh/day1_denied_ed25519
+rm ~/.ssh/day1_denied_ed25519.pub
+```
+
+Với primary lab key chỉ remove nếu không còn cần.
+
+Không remove existing real administrative key.
+
+---
+
+# 207. Remove lab directory
+
+Pre-check:
+
+```bash
+sudo find /srv/day1lab -maxdepth 3 -ls
+```
+
+Đảm bảo chỉ có controlled test data.
+
+Sau đó:
+
+```bash
+# [DESTRUCTIVE]
+sudo rm -r /srv/day1lab
+```
+
+Không thêm `-f` nếu không cần.
+
+Verify:
+
+```bash
+ls -ld /srv/day1lab
 ```
 
 Expected:
@@ -3190,952 +4081,844 @@ Expected:
 No such file or directory
 ```
 
-Vì shell resolve thành:
+---
+
+# 208. Remove users
+
+Trước hết:
+
+```bash
+id ops1
+id audit1
+```
+
+Xác nhận đây chính là lab-created accounts.
+
+Sau đó:
+
+```bash
+# [DESTRUCTIVE]
+sudo userdel -r ops1
+```
+
+```bash
+# [DESTRUCTIVE]
+sudo userdel -r audit1
+```
+
+`-r` có thể remove home/mail data liên quan user.
+
+Chỉ dùng vì đây là controlled lab user.
+
+Không chạy với production account.
+
+---
+
+# 209. Verify users removed
+
+```bash
+getent passwd ops1
+```
+
+```bash
+getent passwd audit1
+```
+
+Expected no records.
+
+---
+
+# 210. Remove groups
+
+Sau khi users không còn dependency:
+
+```bash
+# [DESTRUCTIVE]
+sudo groupdel day1ops
+```
+
+Nếu tạo failure-injection group:
+
+```bash
+sudo groupdel day1wrong
+```
+
+---
+
+# 211. Verify
+
+```bash
+getent group day1ops
+getent group day1wrong
+```
+
+Expected no output.
+
+---
+
+# 212. Không remove evidence
+
+Cleanup operational objects không có nghĩa xóa evidence.
+
+Evidence repository nên giữ:
 
 ```text
-~/day1-lab/input/output/server_counts.txt
+before state
+changes
+positive tests
+negative tests
+cleanup
+```
+
+theo training/audit requirement.
+
+---
+
+# 213. Cleanup verification evidence
+
+Thu:
+
+```bash
+{
+    echo "=== CLEANUP TIMESTAMP ==="
+    date -Is
+
+    echo "=== USERS ==="
+    getent passwd ops1 || true
+    getent passwd audit1 || true
+
+    echo "=== GROUPS ==="
+    getent group day1ops || true
+    getent group day1wrong || true
+
+    echo "=== LAB DIRECTORY ==="
+    ls -ld /srv/day1lab 2>&1 || true
+
+    echo "=== SUDO RULE ==="
+    ls -l /etc/sudoers.d/day1-ops1 2>&1 || true
+} | tee ~/day1_cleanup_verification.txt
+```
+
+Expected là controlled objects không còn.
+
+---
+
+# 214. Practical Troubleshooting Record
+
+Một Infrastructure Operations engineer phải có khả năng document incident/failure.
+
+Ví dụ:
+
+```text
+Issue:
+ops1 cannot read /srv/day1lab/permtest/report.txt
+
+Timestamp:
+...
+
+Expected:
+ops1 has read access through day1ops
+
+Observed:
+Permission denied
+
+Evidence:
+id ops1
+ls -ld parent
+ls -l file
+stat file
+
+Finding:
+File group ownership changed from day1ops to day1wrong
+
+Root Cause:
+Incorrect group ownership
+
+Corrective Action:
+chgrp day1ops report.txt
+
+Verification:
+ops1 successfully read file
+
+Rollback:
+Not required; corrective action restored approved baseline
+
+Escalation:
+Not required; within lab/L2 scope
+```
+
+Đây là loại thinking bạn cần tập từ Day 1.
+
+---
+
+# 215. Khi nào không nên tự sửa?
+
+Giả sử bạn thấy:
+
+```text
+/etc/ssh/sshd_config
+```
+
+khác với expectation.
+
+Không đồng nghĩa bạn được phép sửa.
+
+Nếu:
+
+```text
+không có baseline
+không biết policy
+không có change approval
+service impact không rõ
+```
+
+thì correct action là:
+
+```text
+capture evidence
+document discrepancy
+escalate
 ```
 
 không phải:
 
 ```text
-~/day1-lab/output/server_counts.txt
+vi /etc/ssh/sshd_config
+```
+
+rồi restart service.
+
+---
+
+# 216. Escalation Boundary Trong Lab
+
+Một practical operator nên escalate khi:
+
+```text
+access không được authorize
+unknown root-owned object xuất hiện
+unknown privileged account
+unknown SSH key
+sudo rule khác baseline
+server có production marker
+security control phải bị weaken mới "fix được"
+data loss risk
+account name collision với existing environment
+```
+
+Escalation phải kèm evidence.
+
+---
+
+# 217. Practical Acceptance Test — Task A
+
+Không nhìn tài liệu, bạn phải làm được:
+
+```text
+1. Xác định current user
+2. Xác định hostname
+3. Xác định OS
+4. Xác định kernel
+5. Tạo directory tree
+6. Tạo/copy/move/remove test file
+7. Search file
+8. Search text
+9. Pipe output
+10. Redirect output
+```
+
+Không cần nhớ mọi option.
+
+Bạn phải biết dùng:
+
+```bash
+man
+--help
+```
+
+khi quên.
+
+---
+
+# 218. Practical Acceptance Test — Task B
+
+Bạn phải có thể thực hiện:
+
+```text
+Create controlled group
+Create two controlled users
+Add one user to group
+Verify memberships
+Configure root:group ownership
+Set 640 file permissions
+Authorized user reads successfully
+Unauthorized user is denied
+Authorized user cannot write
 ```
 
 ---
 
-# 130. Troubleshoot
+# 219. Practical Acceptance Test — Task C
 
-```bash
-pwd
-```
-
-```bash
-find ~/day1-lab -name server_counts.txt -print
-```
-
-Correct relative path:
-
-```bash
-cat ../output/server_counts.txt
-```
-
-Lesson:
-
-> path problems thường là context problems, không phải permission problems.
-
----
-
-# PHASE 32 — TROUBLESHOOTING CHECKPOINTS
-
-## Permission denied
-
-Investigation order:
+Bạn phải giải thích và demonstrate:
 
 ```text
-Correct user?
-    ↓
-Correct groups?
-    ↓
-Correct object?
-    ↓
-Correct owner/group?
-    ↓
-Correct file mode?
-    ↓
-Correct parent directory mode?
-    ↓
-Other control outside Day 1?
-```
-
-Commands:
-
-```bash
-whoami
-id USER
-ls -ld /path
-ls -l /path/file
-stat /path/file
-```
-
-Nếu tất cả DAC state đúng mà vẫn deny:
-
-```text
-Do not disable security controls.
-Collect evidence.
-Escalate to investigate ACL/SELinux/other policy.
+Current umask
+Temporary change
+Effect on newly-created file
+Effect on newly-created directory
+Restore original umask
 ```
 
 ---
 
-# 131. SSH troubleshooting checkpoint
+# 220. Practical Acceptance Test — Task D
+
+Bạn phải có thể thiết kế one-command `sudo` delegation.
+
+Acceptance:
 
 ```text
-Correct host?
- ↓
-TCP connection succeeds?
- ↓
-Host key valid?
- ↓
-Correct username?
- ↓
-Correct private key selected?
- ↓
-Public key authorized?
- ↓
-Correct ownership?
- ↓
-Correct permissions?
- ↓
-Server-side policy?
-```
-
-Day 1 dừng trước server-wide policy modification.
-
----
-
-# 132. `sudo` troubleshooting checkpoint
-
-```text
-Correct user?
- ↓
-sudo available?
- ↓
-sudo -l shows rule?
- ↓
-Exact executable path?
- ↓
-Exact arguments?
- ↓
-Syntax valid?
- ↓
-Positive test?
- ↓
-Negative test?
-```
-
-Không giải quyết bằng:
-
-```text
-grant ALL=(ALL) ALL
-```
-
-chỉ vì rule cụ thể chưa chạy.
-
----
-
-# PHASE 33 — EVIDENCE PACKAGE
-
-Final evidence package nên có cấu trúc:
-
-```text
-Day01/
-├── 00_admin/
-│   ├── access_checklist.txt
-│   └── learning_baseline.txt
-│
-├── 01_inventory/
-│   └── system_inventory.txt
-│
-├── 02_cli/
-│   ├── navigation.txt
-│   ├── file_operations.txt
-│   ├── searching.txt
-│   └── text_processing.txt
-│
-├── 03_users_groups/
-│   └── users_groups.txt
-│
-├── 04_permissions/
-│   ├── before.txt
-│   ├── after.txt
-│   ├── access_positive.txt
-│   ├── access_negative.txt
-│   └── umask.txt
-│
-├── 05_sudo/
-│   ├── sudo_rule_summary.txt
-│   ├── sudo_positive.txt
-│   └── sudo_negative.txt
-│
-├── 06_ssh/
-│   ├── key_fingerprint.txt
-│   ├── ssh_permissions.txt
-│   ├── ssh_positive.txt
-│   └── ssh_negative.txt
-│
-├── 08_failures/
-│   ├── permission_failure.txt
-│   ├── group_failure.txt
-│   ├── sudo_validation_failure.txt
-│   └── ssh_key_failure.txt
-│
-└── 09_final/
-    ├── day1_summary.txt
-    └── completion_checklist.txt
-```
-
-Không đặt private key vào repository này.
-
----
-
-# PHASE 34 — EVIDENCE QUALITY CHECK
-
-Mỗi artifact nên trả lời:
-
-```text
-Which host?
-Which user?
-When?
-What was tested?
-What command?
-What result?
-Was result expected?
-PASS or FAIL?
-```
-
-Một file chỉ chứa:
-
-```text
-Permission denied
-```
-
-là evidence yếu.
-
-Tốt hơn:
-
-```text
-Timestamp:
-Host:
-Identity:
-Test:
-Expected:
-Actual:
-Result:
+Allowed sudo command → PASS
+Other sudo command   → DENIED
+sudoers syntax       → VALID
 ```
 
 ---
 
-# PHASE 35 — CLEANUP / ROLLBACK
+# 221. Practical Acceptance Test — Task E
 
-Cleanup cũng là một phần của operations.
+Bạn phải có thể:
 
-Không được làm "lab xong rồi để nguyên".
+```text
+Generate SSH key pair
+Identify private/public key
+Protect private key
+Install public key
+Verify fingerprint
+Login with explicit key
+Test unapproved key
+Document allowed + denied result
+Revoke lab key if required
+```
 
 ---
 
-# 133. Trước cleanup
+# 222. Practical Acceptance Test — Task F
 
-Capture final configuration evidence trước.
+Cho bạn symptom:
 
-Sau đó xác nhận:
+```text
+ops1 gets Permission denied
+```
+
+Bạn không được thay đổi permissions trong 30 giây đầu.
+
+Bạn phải inspect:
 
 ```bash
-getent passwd d1ops
-getent passwd d1viewer
-getent group d1opsgrp
-sudo ls -ld /srv/day1-lab
+id ops1
+ls -ld <parent>
+ls -l <file>
+stat <file>
+```
+
+rồi mới đưa hypothesis.
+
+Đây là test operational discipline.
+
+---
+
+# 223. Evidence Acceptance Criteria
+
+Day 1 chưa hoàn thành nếu bạn chỉ nói:
+
+```text
+"Em đã làm xong."
+```
+
+Bạn phải chứng minh.
+
+Tối thiểu evidence package cần thể hiện:
+
+| Area              | Evidence                           |
+| ----------------- | ---------------------------------- |
+| System            | hostname, OS, kernel, timestamp    |
+| Account           | `id`/`getent`                      |
+| Group             | membership                         |
+| Ownership         | owner/group                        |
+| Permissions       | mode                               |
+| Authorized access | successful test                    |
+| Denied access     | failed test                        |
+| `sudo`            | allowed + denied                   |
+| SSH               | authorized + unauthorized key test |
+| Cleanup           | lab objects removed/restored       |
+| Commands          | execution record/journal           |
+
+---
+
+# 224. Một số lỗi thực hành phổ biến
+
+### Chạy command trước khi kiểm tra hostname
+
+Risk:
+
+```text
+wrong server
+```
+
+### Tạo user mà không kiểm tra existing user
+
+Risk:
+
+```text
+naming collision
+modify existing identity
+```
+
+### Dùng `usermod -G` mà không hiểu `-a`
+
+Risk:
+
+```text
+remove existing supplementary memberships
+```
+
+### `chmod 777`
+
+Risk:
+
+```text
+over-permission
+```
+
+### Chỉ test successful access
+
+Risk:
+
+```text
+không chứng minh denied control hoạt động
+```
+
+### Dùng broad `sudo`
+
+Risk:
+
+```text
+privilege escalation scope quá lớn
+```
+
+### Copy private SSH key lên server
+
+Risk:
+
+```text
+credential compromise
+```
+
+### Disable SSH host verification
+
+Risk:
+
+```text
+server identity không còn được xác minh
+```
+
+### Sửa `/etc/sudoers` trực tiếp mà không validate
+
+Risk:
+
+```text
+sudo configuration break
+```
+
+### Xóa lab accounts nhưng không giữ evidence
+
+Risk:
+
+```text
+không còn audit trail
 ```
 
 ---
 
-# 134. Remove sudo rule
+# 225. Day 1 Practical Workflow hoàn chỉnh
 
-Trước:
-
-```bash
-sudo visudo -cf /etc/sudoers.d/day1-d1ops
-```
-
-Nếu lab kết thúc và rule chỉ dành cho lab:
-
-```bash
-sudo rm /etc/sudoers.d/day1-d1ops
-```
-
-Verify:
-
-```bash
-sudo -u d1ops sudo -l
-```
-
-Expected:
-
-lab grant không còn.
-
-Lưu ý account có thể còn các privileges khác nếu environment đã cấu hình sẵn; không được assume.
-
----
-
-# 135. Remove lab filesystem
-
-Chỉ sau khi xác nhận path:
-
-```bash
-sudo ls -la /srv/day1-lab
-```
-
-Nếu đúng dedicated lab directory:
-
-```bash
-sudo rm -r /srv/day1-lab
-```
-
-Không dùng:
-
-```bash
-sudo rm -rf /srv
-```
-
----
-
-# 136. Check user processes
-
-Trước khi delete account:
-
-```bash
-pgrep -u d1ops
-pgrep -u d1viewer
-```
-
-Nếu có active process:
-
-> xác định trước khi xóa account.
-
-Không kill blindly.
-
----
-
-# 137. Delete lab users
-
-Chỉ với accounts được tạo riêng cho lab:
-
-```bash
-sudo userdel -r d1ops
-```
-
-```bash
-sudo userdel -r d1viewer
-```
-
-`-r` có thể xóa home/mail data của account.
-
-Do đó command này chỉ an toàn khi bạn đã xác nhận account/home là disposable lab objects.
-
----
-
-# 138. Verify deletion
-
-```bash
-getent passwd d1ops
-getent passwd d1viewer
-```
-
-Expected:
+Bạn nên thuộc workflow này hơn là thuộc từng command:
 
 ```text
-no result
+┌─────────────────────────────┐
+│ 1. Confirm authorization    │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 2. Confirm target/environment│
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 3. Prepare evidence repo    │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 4. Capture inventory        │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 5. CLI/file exercises       │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 6. Create controlled IDs    │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 7. Configure group access   │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 8. Configure permissions    │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 9. Test allow + deny        │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 10. Configure minimal sudo  │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 11. Test allow + deny sudo  │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 12. Generate SSH keys       │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 13. Configure public key    │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 14. Test allow + deny SSH   │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 15. Failure injection       │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 16. Troubleshoot/evidence   │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 17. Rollback/Cleanup        │
+└──────────────┬──────────────┘
+               ↓
+┌─────────────────────────────┐
+│ 18. Verify clean state      │
+└─────────────────────────────┘
 ```
 
 ---
 
-# 139. Delete group
-
-Sau khi users không còn:
-
-```bash
-sudo groupdel d1opsgrp
-```
-
-Verify:
-
-```bash
-getent group d1opsgrp
-```
-
-Expected:
-
-```text
-no result
-```
-
----
-
-# 140. Remove temporary SSH keys
-
-Nếu keys chỉ dùng cho lab và policy yêu cầu cleanup:
-
-Trên workstation:
-
-```bash
-rm ~/.ssh/day1_rhel_lab
-rm ~/.ssh/day1_rhel_lab.pub
-rm ~/.ssh/day1_unapproved
-rm ~/.ssh/day1_unapproved.pub
-```
-
-Chỉ chạy sau khi:
-
-```bash
-ls -l ~/.ssh/day1_*
-```
-
-và xác nhận đúng files.
-
-Không dùng wildcard nếu có nguy cơ match unrelated keys.
-
-Ví dụ an toàn hơn:
-
-```bash
-rm ~/.ssh/day1_rhel_lab ~/.ssh/day1_rhel_lab.pub
-```
-
----
-
-# 141. Evidence không xóa
-
-Giữ:
-
-```text
-fingerprints
-sanitized command output
-configuration evidence
-test results
-```
-
-nhưng không giữ:
-
-```text
-private key
-passphrase
-password
-```
-
----
-
-# PHASE 36 — FINAL VERIFICATION
-
-Sau cleanup:
-
-```bash
-getent passwd d1ops
-getent passwd d1viewer
-getent group d1opsgrp
-```
-
-Lab path:
-
-```bash
-ls -ld /srv/day1-lab
-```
-
-Expected:
-
-```text
-No such file or directory
-```
-
-Sudo rule:
-
-```bash
-sudo ls -l /etc/sudoers.d/day1-d1ops
-```
-
-Expected:
-
-```text
-No such file or directory
-```
-
-Chỉ coi cleanup complete sau verification.
-
----
-
-# PHASE 37 — ROLLBACK PHILOSOPHY
-
-Trong lab này, mỗi change phải có rollback rõ.
-
-| Change                           | Rollback                                       |
-| -------------------------------- | ---------------------------------------------- |
-| Create file                      | remove lab file                                |
-| Create directory                 | remove dedicated lab directory                 |
-| Change `chmod`                   | restore recorded previous mode                 |
-| Change `chown`                   | restore recorded previous owner/group          |
-| Add user to group                | remove membership                              |
-| Create user                      | `userdel` after verifying disposable account   |
-| Create group                     | `groupdel`                                     |
-| Add sudo fragment                | remove dedicated fragment                      |
-| Add SSH public key               | remove only corresponding authorized key entry |
-| Generate temporary local SSH key | remove temporary key when no longer required   |
-
-Điểm quan trọng:
-
-> rollback không nên dựa vào trí nhớ.
-
-Bạn phải biết **before state**.
-
----
-
-# PHASE 38 — ESCALATION BOUNDARIES
-
-Trong Day 1, bạn nên dừng và escalate nếu gặp các trường hợp như:
-
-### SSH
-
-```text
-Host key unexpectedly changed
-Need sshd_config modification
-Need firewall modification
-Need network route change
-Need PAM change
-```
-
-### Permissions
-
-```text
-Recursive permission change affects production tree
-Shared filesystem involved
-Application owner unclear
-ACL or SELinux suspected
-Current baseline unknown
-```
-
-### Users
-
-```text
-Existing production account would be modified
-UID/GID conflict
-Central identity source involved
-Account ownership unclear
-```
-
-### Sudo
-
-```text
-Required rule would effectively grant unrestricted root
-Complex wildcard required
-Shell-capable command would be privileged
-Production sudoers policy unclear
-```
-
-### Evidence/security
-
-```text
-Credential exposure
-Private key exposure
-Unexpected sensitive data discovered
-```
-
----
-
-# PHASE 39 — LAB TROUBLESHOOTING RECORD TEMPLATE
-
-Khi có lỗi, document:
-
-```text
-Incident/Exercise ID:
-
-Timestamp:
-
-Host:
-
-Environment:
-
-User:
-
-Expected behavior:
-
-Actual behavior:
-
-Exact error:
-
-Recent change:
-
-Read-only checks:
-
-Observed state:
-
-Hypothesis:
-
-Controlled test:
-
-Result:
-
-Corrective action:
-
-Verification:
-
-Rollback available:
-
-Escalation required:
-
-Evidence files:
-```
-
-Đây là habit rất quan trọng cho những Day sau.
-
----
-
-# PHASE 40 — WHAT YOU SHOULD NOT DO
-
-Day 1 lab không yêu cầu bạn:
-
-```text
-disable SELinux
-disable firewall
-edit sshd_config
-restart sshd randomly
-reboot server to "fix" access
-set chmod 777
-grant unrestricted sudo
-use shared root credentials
-copy private key to server
-put passwords in scripts
-delete system users
-modify production files
-```
-
-Nếu một tutorial trên Internet bảo làm như vậy để "cho chạy", không áp dụng mù quáng.
-
----
-
-# PHASE 41 — DAY 1 PRACTICAL TROUBLESHOOTING MINDSET
-
-Khi một test fail, tư duy:
-
-```text
-Symptom
-  ↓
-Context
-  ↓
-Identity
-  ↓
-Configuration
-  ↓
-Dependency
-  ↓
-Expected behavior
-  ↓
-Difference
-  ↓
-Root cause hypothesis
-  ↓
-Smallest approved correction
-  ↓
-Verification
-  ↓
-Evidence
-```
-
-Không:
-
-```text
-Symptom
- ↓
-Google random command
- ↓
-sudo everything
- ↓
-reboot
-```
-
----
-
-# PHASE 42 — EXPECTED FINAL SKILLS
-
-Sau lab, bạn phải tự làm được:
-
-### Workstation
-
-- kiểm tra SSH client;
-- tổ chức evidence repository;
-- bảo vệ SSH private key;
-- thu thập fingerprint.
-
-### Linux CLI
-
-- navigate directory tree;
-- phân biệt absolute/relative path;
-- create/copy/move/delete files;
-- tìm files;
-- tìm text;
-- compose simple pipelines;
-- redirect output.
+# 226. Day 1 Practical Cheat Sheet
 
 ### Identity
 
-- query users/groups;
-- tạo lab user/group;
-- assign supplementary group;
-- verify UID/GID/group membership.
+```bash
+whoami
+id
+id <user>
+groups <user>
+
+getent passwd <user>
+getent group <group>
+```
+
+### System
+
+```bash
+hostname
+hostnamectl
+cat /etc/os-release
+uname -r
+uname -m
+date -Is
+```
+
+### Navigation
+
+```bash
+pwd
+ls
+ls -l
+ls -la
+cd
+```
+
+### Files
+
+```bash
+touch
+mkdir
+cp
+mv
+rm
+rmdir
+stat
+```
+
+### Search
+
+```bash
+find
+grep
+```
+
+### Text processing
+
+```bash
+head
+tail
+wc
+sort
+uniq
+```
+
+### Pipes/redirection
+
+```text
+|
+>
+>>
+2>
+```
+
+### Users/groups
+
+```bash
+groupadd
+useradd
+usermod
+userdel
+groupdel
+```
+
+### Ownership
+
+```bash
+chown
+chgrp
+```
 
 ### Permissions
 
-- read `ls -l`;
-- sử dụng `chmod`;
-- sử dụng `chown`;
-- sử dụng `chgrp`;
-- hiểu file vs directory permission;
-- test authorized/denied access;
-- sử dụng `umask`.
+```bash
+chmod
+umask
+```
 
-### Privilege
+### `sudo`
 
-- đọc `sudo -l`;
-- hiểu exact limited sudo command;
-- validate sudoers bằng `visudo`;
-- prove permitted command;
-- prove prohibited command is denied.
+```bash
+sudo -l
+visudo -cf <file>
+```
 
 ### SSH
 
-- generate key pair;
-- protect private key;
-- install public key;
-- verify `.ssh` ownership/mode;
-- authenticate bằng key;
-- debug bằng `ssh -v`;
-- prove unapproved key is denied.
+```bash
+ssh
+ssh-keygen
+ssh-copy-id
+```
 
-### Operations
+Useful verification:
 
-- capture before/after state;
-- collect evidence;
-- rollback;
-- cleanup;
-- know when to escalate.
-
----
-
-# PHASE 43 — PRACTICAL COMPLETION CHECKLIST
-
-Bạn chỉ nên đánh dấu Day 1 Practical complete khi toàn bộ nội dung dưới đây đã có evidence:
-
-```text
-ADMINISTRATION
-[ ] Workstation prepared
-[ ] Approved target confirmed
-[ ] Access checklist complete
-[ ] Evidence repository created
-[ ] Personal learning baseline recorded
-
-INVENTORY
-[ ] Hostname captured
-[ ] OS captured
-[ ] Kernel captured
-[ ] User identity captured
-[ ] Basic system inventory captured
-
-CLI
-[ ] pwd
-[ ] ls
-[ ] cd
-[ ] absolute paths
-[ ] relative paths
-[ ] touch
-[ ] mkdir
-[ ] cp
-[ ] mv
-[ ] rm
-[ ] find
-[ ] grep
-[ ] pipe
-[ ] >
-[ ] >>
-[ ] basic text processing
-
-USERS/GROUPS
-[ ] Controlled group created
-[ ] Controlled users created
-[ ] Group membership configured
-[ ] Membership verified
-
-PERMISSIONS
-[ ] Ownership verified
-[ ] chown tested
-[ ] chgrp tested
-[ ] chmod numeric tested
-[ ] chmod symbolic tested
-[ ] umask tested
-[ ] Positive file access verified
-[ ] Negative file access verified
-
-SUDO
-[ ] Baseline access tested
-[ ] Least-privilege rule configured
-[ ] sudoers validated
-[ ] Approved sudo command succeeds
-[ ] Unapproved sudo command denied
-
-SSH
-[ ] Approved key pair generated
-[ ] Private key protected
-[ ] Fingerprint documented
-[ ] Public key installed
-[ ] authorized_keys owner verified
-[ ] authorized_keys permission verified
-[ ] Positive SSH authentication verified
-[ ] Unapproved key denied
-[ ] No private key included in evidence
-
-TROUBLESHOOTING
-[ ] Permission failure investigated
-[ ] Group membership failure investigated
-[ ] Invalid sudo candidate safely detected
-[ ] SSH negative test investigated
-[ ] Path failure investigated
-
-EVIDENCE
-[ ] Before-state evidence
-[ ] After-state evidence
-[ ] Positive verification evidence
-[ ] Negative verification evidence
-[ ] Commands documented
-[ ] Timestamps included
-[ ] Hostname included
-[ ] Identity included
-[ ] No credentials exposed
-
-CLEANUP
-[ ] Temporary sudo rule removed
-[ ] Lab directory removed
-[ ] Lab users removed if required
-[ ] Lab group removed if required
-[ ] Temporary SSH keys removed if required
-[ ] Final state verified
+```bash
+ssh-keygen -lf <public-key>
 ```
 
 ---
 
-# PHASE 44 — DELIVERABLE CUỐI DAY 1
+# 227. Final Day 1 Practical Completion Checklist
 
-Theo đúng syllabus, ba nhóm deliverable quan trọng nhất phải là **system inventory, access verification và configuration evidence**. Infrastructure_Operations_14_Da…
+Bạn chỉ nên coi Module Thực hành Day 1 hoàn thành khi có thể tick được:
 
-Một final submission tốt có thể tóm tắt:
+### Environment preparation
 
-```text
-DAY 1 LAB REPORT
+- [ ] Tôi xác minh đúng lab target.
+- [ ] Tôi xác minh current identity.
+- [ ] Tôi biết mình có authorization gì.
+- [ ] Tôi có evidence repository.
+- [ ] Tôi đã ghi personal learning baseline.
 
-1. Environment
-   - Host
-   - OS
-   - Kernel
-   - Operator
-   - Lab scope
+### System inventory
 
-2. Administrative Readiness
-   - Access authorization
-   - Workstation readiness
-   - Evidence repository
+- [ ] Hostname.
+- [ ] OS distribution.
+- [ ] OS version.
+- [ ] Kernel.
+- [ ] Architecture.
+- [ ] CPU overview.
+- [ ] Memory overview.
+- [ ] Storage overview.
+- [ ] Current identity.
+- [ ] Timestamp.
 
-3. CLI Exercises
-   - Navigation
-   - Files/directories
-   - Copy/move/delete
-   - Search
-   - Text processing
+### CLI
 
-4. Identity Configuration
-   - Users
-   - Groups
-   - Membership
+- [ ] `pwd`.
+- [ ] `ls`.
+- [ ] `cd`.
+- [ ] absolute path.
+- [ ] relative path.
+- [ ] `.`
+- [ ] `..`
+- [ ] `~`.
 
-5. Filesystem Security
-   - Ownership
-   - Permissions
-   - umask
-   - Positive/negative tests
+### Files
 
-6. Privileged Access
-   - sudo requirement
-   - Rule
-   - Syntax validation
-   - Allowed test
-   - Denied test
+- [ ] Create file.
+- [ ] Create directory.
+- [ ] Copy.
+- [ ] Move.
+- [ ] Rename.
+- [ ] Delete controlled file.
+- [ ] Remove controlled directory.
+- [ ] Verify before/after.
 
-7. SSH
-   - Public-key fingerprint
-   - Server-side authorization
-   - Positive login
-   - Negative login
+### Search/text
 
-8. Failure Injection
-   - Symptoms
-   - Investigation
-   - Root cause
-   - Correction
-   - Verification
+- [ ] `find`.
+- [ ] `grep`.
+- [ ] pipe.
+- [ ] stdout redirection.
+- [ ] stderr redirection.
+- [ ] append.
+- [ ] simple counting/filtering.
 
-9. Cleanup
-   - Objects removed
-   - Final verification
+### Users/groups
 
-10. Evidence Index
-   - Artifact filenames
-   - Timestamps
-   - Test status
-```
+- [ ] Pre-check names.
+- [ ] Create controlled group.
+- [ ] Create controlled users.
+- [ ] Add correct user to group.
+- [ ] Verify membership.
+- [ ] Verify unauthorized user is not member.
+
+### Ownership/permissions
+
+- [ ] `chown`.
+- [ ] `chgrp`.
+- [ ] `chmod`.
+- [ ] `stat`.
+- [ ] Positive read test.
+- [ ] Negative read test.
+- [ ] Negative write test.
+- [ ] Parent directory permission test.
+
+### `umask`
+
+- [ ] Read current value.
+- [ ] Change temporarily.
+- [ ] Create new file/directory.
+- [ ] Explain result.
+- [ ] Restore original value.
+
+### `sudo`
+
+- [ ] Design exact least-privilege rule.
+- [ ] Validate candidate sudoers syntax.
+- [ ] Install controlled drop-in.
+- [ ] Authorized sudo action succeeds.
+- [ ] Unauthorized sudo action fails.
+- [ ] Rollback sudo rule.
+- [ ] Revalidate configuration.
+
+### SSH
+
+- [ ] Generate key pair.
+- [ ] Know private vs public.
+- [ ] Protect private key.
+- [ ] Verify fingerprint.
+- [ ] Install public key.
+- [ ] Login with explicitly selected key.
+- [ ] Unauthorized key fails.
+- [ ] Understand host-key verification.
+- [ ] Revoke lab key when required.
+
+### Failure Injection
+
+- [ ] Wrong group ownership.
+- [ ] Directory traverse failure.
+- [ ] Incorrect file mode.
+- [ ] Invalid sudoers candidate.
+- [ ] Unauthorized SSH key.
+- [ ] Root cause identified before remediation.
+- [ ] Corrective action verified.
+
+### Evidence/Cleanup
+
+- [ ] System inventory retained.
+- [ ] Access verification retained.
+- [ ] Configuration evidence retained.
+- [ ] Positive tests retained.
+- [ ] Negative tests retained.
+- [ ] Failure evidence retained.
+- [ ] Cleanup verified.
+- [ ] No password/private key/token in evidence.
 
 ---
 
-# Day 1 — Operational Flow cần thuộc về tư duy
+# 228. Tiêu chuẩn "Pass" thực sự của Day 1
 
-Nếu chỉ nhớ **một workflow** từ toàn bộ Module Thực hành Day 1, hãy nhớ:
+Day 1 không nên được đánh giá bằng việc bạn nhớ:
 
-```text
-              REQUEST
-                 │
-                 ▼
-         Confirm Authorization
-                 │
-                 ▼
-        Confirm Host / Identity
-                 │
-                 ▼
-          Capture Baseline
-                 │
-                 ▼
-         Read-only Inspection
-                 │
-                 ▼
-        Smallest Safe Change
-                 │
-                 ▼
-      Configuration Verification
-                 │
-                 ▼
-       Functional Positive Test
-                 │
-                 ▼
-       Functional Negative Test
-                 │
-                 ▼
-          Collect Evidence
-                 │
-          ┌──────┴──────┐
-          ▼             ▼
-       Success        Failure
-          │             │
-          ▼             ▼
-       Document      Troubleshoot
-          │             │
-          │        Within scope?
-          │        ┌────┴────┐
-          │       Yes        No
-          │        │          │
-          │        ▼          ▼
-          │     Correct     Escalate
-          │        │
-          └────────┘
-              │
-              ▼
-       Cleanup / Rollback
-              │
-              ▼
-       Final Verification
-              │
-              ▼
-             CLOSE
+```bash
+chmod 640
 ```
 
-Đây mới là mục tiêu thật sự của Day 1: không phải chỉ học `chmod`, `useradd`, `sudo` hay `ssh-keygen`, mà hình thành khả năng **thực hiện một administrative change có kiểm soát từ đầu đến cuối**, gồm authorization, baseline, implementation, security verification, troubleshooting, evidence, rollback và escalation. Đây chính là foundation để bước sang Day 2, nơi cùng operational discipline này sẽ được áp dụng cho packages, processes, `systemd`, SELinux, `firewalld`, networking, storage, logs, Bash, backup và troubleshooting Linux sâu hơn. Infrastructure_Operations_14_Da…
+hay:
+
+```bash
+useradd
+```
+
+Điểm quan trọng hơn là bạn có thể giải thích:
+
+> Tại sao cần `640`, identity nào cần access, identity nào phải bị denied, current state là gì, bạn thay đổi gì, dùng quyền nào, verification nào chứng minh kết quả, evidence nào chứng minh operation, và rollback ra sao.
+
+Một Infrastructure Operations fresher đạt yêu cầu Day 1 phải có tư duy:
+
+```text
+Never start with change.
+
+Start with:
+target
+identity
+scope
+current state
+authorization
+```
+
+rồi mới:
+
+```text
+change
+```
+
+và luôn kết thúc bằng:
+
+```text
+verification
++
+evidence
++
+cleanup/rollback
+```
+
+Đó chính là lý do Assignment Day 1 kết hợp `CLI`, `users/groups`, `permissions`, `sudo`, `SSH`, authorized/denied testing và evidence collection trong cùng một ngày: mục tiêu không phải học các commands rời rạc mà xây một **secure, controlled, auditable Linux administration workflow**. Infrastructure_Operations_14_Da…
+
+Nếu bạn muốn, tôi có thể tra và đối chiếu thêm với **official Red Hat/OpenSSH documentation hiện hành** để xác minh các behavior/version-sensitive của `sudo`, `OpenSSH`, SSH key algorithms và RHEL trước khi bạn chạy lab trên một RHEL version cụ thể.

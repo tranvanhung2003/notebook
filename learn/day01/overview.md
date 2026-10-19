@@ -1,459 +1,560 @@
-# Day 1 — Bản đồ nội dung học theo 2 Module
+# Day 1 — Bản đồ kiến thức cần học
 
-Theo syllabus, **Day 1 thuộc “Orientation & Linux Administration Foundations”** và có hai mục tiêu song song: xây dựng tư duy vận hành hạ tầng an toàn trong môi trường enterprise, đồng thời hình thành nền tảng Linux/RHEL đủ để thao tác bằng CLI, quản lý access, permissions, `sudo` và SSH một cách có kiểm soát. Infrastructure_Operations_14_Da…
+Theo syllabus, **Day 1** thuộc phần **Orientation & Linux Administration Foundations**. Đây là ngày xây nền cho toàn bộ chương trình: trước khi học sâu về `systemd`, networking, storage, logging, Bash, AWS, Windows Server, Nutanix, firewall hay automation, bạn phải hiểu **cách một Infrastructure Operations engineer làm việc an toàn**, đồng thời có nền tảng Linux đủ chắc để thao tác hệ thống bằng `CLI`, quản lý `users/groups`, `permissions`, `sudo` và `SSH`. Infrastructure_Operations_14_Da…
 
-Day 1 chưa đi sâu vào `systemd`, package management, networking, storage, logs hay Bash automation; các nội dung đó chủ yếu thuộc Day 2. Vì vậy Day 1 nên được xem là **foundation bắt buộc** trước khi bước sang Linux operations thực thụ. Infrastructure_Operations_14_Da…
+Tôi sẽ chia toàn bộ Day 1 thành đúng **2 module lớn** như bạn yêu cầu:
 
-Dưới đây là toàn bộ Day 1 được tổ chức lại thành đúng **2 Module: Lý thuyết và Thực hành**. Đây mới là bản đồ nội dung; khi bạn yêu cầu từng Module, tôi sẽ giảng sâu theo `What → Why → How → Verification → Troubleshooting → Evidence → Rollback → Escalation`.
+1. **Module Lý thuyết — Infrastructure Operations Foundation + Linux Administration Foundation**
+2. **Module Thực hành — Linux/RHEL Administrative Lab + Access/Security/Evidence Lab**
+
+Đây là bản **sơ đồ đầy đủ nội dung cần học**, chưa đi vào độ sâu tối đa của từng command hay từng lab scenario. Khi bạn yêu cầu từng module sau, chúng ta sẽ triển khai đến mức `concept → workflow → commands → verification → troubleshooting → evidence → rollback → escalation`.
 
 ---
 
 # MODULE 1 — LÝ THUYẾT
 
-Module Lý thuyết bao phủ toàn bộ phần `Concept/Lecture` của Day 1. Infrastructure_Operations_14_Da…
+## Infrastructure Operations Foundation + Linux Administration Foundation
 
-## Phần 1 — Infrastructure Operations Foundation
+Module này có thể hình dung thành hai nửa:
 
-Đây là phần giúp bạn hiểu **một Infrastructure Operations engineer thực sự làm gì**, được phép làm gì và phải kiểm soát rủi ro như thế nào trước khi đụng tới Linux hay bất kỳ production system nào.
+**Operations mindset** → học cách vận hành infrastructure trong enterprise.
 
-### 1. Infrastructure administration roles and responsibilities
-
-Cần hiểu vai trò của Infrastructure Operations trong vòng đời hệ thống:
-
-- provisioning;
-- configuration;
-- administration;
-- monitoring;
-- maintenance;
-- troubleshooting;
-- backup/recovery;
-- security compliance;
-- access control;
-- patching;
-- evidence collection;
-- incident handling;
-- change execution;
-- escalation;
-- operational handover.
-
-Bạn cần phân biệt việc “biết command” với việc “được phép thực thi command”.
-
-Trọng tâm tư duy:
-
-**Need → Authorization → Change → Execute → Verify → Evidence → Close/Escalate.**
+**Linux administration foundation** → học cách thao tác Linux/RHEL một cách đúng, an toàn và có kiểm soát.
 
 ---
 
-## 2. L1/L2 support boundaries
+## Phần 1 — Infrastructure Administration Roles & Responsibilities
 
-Hiểu ranh giới giữa các tầng support.
+Bạn cần hiểu Infrastructure Operations không đơn giản là “biết chạy command”.
+
+Một Infrastructure Administrator/Operations Engineer thường phải đảm bảo:
+
+`Availability` → hệ thống hoạt động.
+
+`Reliability` → hệ thống hoạt động ổn định.
+
+`Security` → không tạo access hoặc configuration vượt mức cần thiết.
+
+`Recoverability` → khi có sự cố phải biết cách recover.
+
+`Auditability` → mọi thay đổi quan trọng phải có evidence.
+
+`Change control` → không tự ý sửa production.
+
+`Escalation` → biết giới hạn quyền và năng lực của mình.
+
+Điểm quan trọng Day 1 là hình thành tư duy:
+
+> Không phải cứ biết cách sửa là được phép sửa.
+
+Bạn phải phân biệt:
+
+- việc mình **có technical capability** để làm;
+- việc mình **có authorization** để làm;
+- việc mình **được SOP/runbook cho phép** làm;
+- việc cần approval/change ticket;
+- việc phải escalate.
+
+---
+
+## Phần 2 — L1/L2 Support Boundaries
+
+Bạn cần hiểu ranh giới cơ bản giữa các support level.
 
 ### L1
 
-Thông thường tập trung vào:
+Thường tập trung vào:
 
-- monitoring;
-- health checks;
-- standard verification;
-- basic diagnosis;
-- log collection;
-- executing approved runbook;
-- collecting evidence;
-- ticket updates;
-- escalation.
+- initial triage;
+- kiểm tra trạng thái;
+- thu thập evidence;
+- thực hiện documented procedure;
+- xác minh symptom;
+- thực hiện low-risk remediation đã được phê duyệt;
+- mở/escalate incident.
+
+Ví dụ Linux:
+
+```bash
+df -h
+free -m
+uptime
+ip addr
+systemctl status <service>
+```
+
+Đây chủ yếu là `read-only verification`.
 
 ### L2
 
-Có thể xử lý sâu hơn:
+Có thể thực hiện các hoạt động sâu hơn như:
 
-- configuration diagnosis;
-- permission problems;
-- service/application dependencies;
-- approved configuration changes;
-- advanced Linux troubleshooting;
-- root-cause isolation;
-- recovery actions trong phạm vi được phân quyền.
+- configuration troubleshooting;
+- permission troubleshooting;
+- service configuration;
+- user/group administration;
+- log analysis;
+- controlled remediation;
+- configuration change theo procedure.
 
-Điểm quan trọng không phải chỉ là “L1 biết ít hơn L2”, mà là:
+Nhưng L2 vẫn không đồng nghĩa với quyền thay đổi mọi thứ.
 
-> **support boundary là authorization boundary.**
-
-Bạn phải biết khi nào nên dừng troubleshooting và escalate.
-
----
-
-# Phần 2 — Operational Safety & Governance
-
-## 3. Operational safety
-
-Học cách tránh biến một lỗi nhỏ thành outage lớn.
-
-Các nguyên tắc nền tảng:
-
-- inspect trước khi modify;
-- prefer read-only verification;
-- xác nhận target host;
-- xác nhận environment;
-- xác nhận user/context;
-- kiểm tra impact;
-- không chạy command chưa hiểu;
-- tránh wildcard/destructive operations không kiểm soát;
-- backup/config snapshot khi cần;
-- chuẩn bị rollback;
-- log lại thay đổi;
-- verify sau khi thao tác.
-
-Một thói quen rất quan trọng:
+Ví dụ:
 
 ```bash
-whoami
-hostname
-pwd
+sudo systemctl restart <service>
+sudo usermod ...
+sudo chmod ...
 ```
 
-trước những thao tác nhạy cảm.
+có thể là L2 operation nhưng vẫn cần đúng authorization.
+
+Bạn cũng cần hiểu khi nào phải chuyển tiếp lên:
+
+- L3;
+- platform engineer;
+- network team;
+- security team;
+- application team;
+- vendor support.
 
 ---
 
-## 4. Production và non-production environment separation
+# Phần 3 — Operational Safety
 
-Bạn phải hiểu sự khác biệt giữa:
+Đây là một trong những nội dung quan trọng nhất Day 1.
 
-- Development;
-- Test;
-- UAT;
-- Staging;
-- Production;
-- DR environment;
-- Lab.
+Bạn cần hình thành thói quen trước mọi administrative action:
 
-Các environment khác nhau về:
+**Identify → Assess → Authorize → Backup → Execute → Verify → Evidence → Close/Escalate**
 
-- dữ liệu;
-- quyền access;
-- change process;
+Ví dụ trước khi thay đổi permission:
+
+```bash
+chmod 640 file.conf
+```
+
+không nên chỉ chạy command.
+
+Cần biết:
+
+- file hiện tại có permission gì?
+- owner/group là ai?
+- application nào đang sử dụng file?
+- permission mới có thể làm service fail không?
+- có approval không?
+- rollback là gì?
+- command nào verify?
+- evidence nào cần lưu?
+
+Ví dụ baseline:
+
+```bash
+ls -l file.conf
+stat file.conf
+```
+
+Sau change:
+
+```bash
+chmod 640 file.conf
+```
+
+Verification:
+
+```bash
+ls -l file.conf
+stat file.conf
+```
+
+Rollback phải dựa trên state ban đầu.
+
+---
+
+# Phần 4 — Production vs Non-Production Environment
+
+Bạn phải hiểu rõ sự khác nhau giữa:
+
+`Production`
+
+và:
+
+`Development / Test / QA / UAT / Staging / Lab`
+
+Day 1 phải hình thành nguyên tắc:
+
+> Lab command không tự động trở thành production command.
+
+Trong `production`, thường phải quan tâm thêm:
+
+- impact;
 - maintenance window;
-- monitoring;
-- security control;
-- business impact;
-- rollback expectation.
-
-Day 1 yêu cầu hình thành thói quen:
-
-> Không bao giờ giả định system đang thao tác là lab hoặc non-production.
-
----
-
-## 5. Change authorization
-
-Học nguyên tắc:
-
-**Không phải mọi technical change hợp lý đều được phép thực hiện.**
-
-Trước change có thể cần:
-
-- ticket/change record;
-- scope;
-- owner;
-- impact assessment;
-- risk;
 - approval;
-- implementation plan;
-- verification plan;
-- rollback/backout plan;
-- maintenance window.
-
-Bạn cũng phải phân biệt:
-
-- diagnostic action;
-- operational action;
-- configuration-changing action.
-
----
-
-## 6. Least-privilege principles
-
-Một trong những concept quan trọng nhất của cả khóa.
-
-Một user/process chỉ nên có:
-
-> **quyền tối thiểu cần thiết để hoàn thành nhiệm vụ được phê duyệt.**
-
-Áp dụng vào:
-
-- Linux users;
-- Linux groups;
-- filesystem permissions;
-- `sudo`;
-- SSH;
-- service accounts;
-- administrator/root access.
-
-Ví dụ:
-
-Không cấp:
-
-```text
-ALL=(ALL) ALL
-```
-
-nếu người vận hành chỉ cần restart một service cụ thể.
-
----
-
-# Phần 3 — SOP, Runbook, Incident và Evidence
-
-## 7. Standard Operating Procedures — SOP
-
-Hiểu SOP dùng để chuẩn hóa công việc định kỳ.
-
-Một SOP thường mô tả:
-
-- objective;
-- scope;
-- prerequisites;
-- responsible role;
-- approved steps;
-- validation;
-- evidence;
+- dependency;
+- backup;
+- monitoring;
 - rollback;
-- escalation.
-
----
-
-## 8. Runbooks
-
-Runbook thường cụ thể hơn SOP và thiên về execution/troubleshooting.
-
-Ví dụ:
-
-```text
-Runbook: Linux SSH Login Failure
-```
-
-có thể hướng dẫn:
-
-```text
-1. Verify host reachability
-2. Verify target hostname
-3. Verify username
-4. Verify SSH client
-5. Verify authentication method
-6. Collect error message
-7. Check authorized_keys
-8. Verify file ownership/permissions
-9. Escalate if sshd configuration must be changed
-```
-
-Bạn sẽ được học cách sử dụng runbook thay vì troubleshooting tùy hứng.
-
----
-
-## 9. Incident escalation
-
-Bạn phải hiểu:
-
-- incident là gì;
-- symptom khác root cause;
-- evidence nào cần thu thập;
-- escalation phải chứa thông tin gì.
-
-Một escalation tốt phải trả lời được:
-
-```text
-What happened?
-When?
-Which system?
-Who/what is affected?
-What was checked?
-What evidence exists?
-What actions were taken?
-What changed?
-What remains unresolved?
-```
-
----
-
-## 10. Access management
-
-Bao gồm tư duy quản lý:
-
-- account request;
-- account creation;
-- entitlement;
-- authentication;
-- authorization;
-- privileged access;
-- access verification;
-- access expiration/revocation;
+- communication;
 - audit trail.
 
-Đây là nền tảng trực tiếp cho:
+Một command vô hại trong lab có thể gây outage trong production.
 
-- Linux user/group;
-- `sudo`;
-- SSH;
-- AWS IAM sau này;
-- privileged-access governance ở các Day sau.
+Ví dụ:
 
----
-
-## 11. Configuration baselines
-
-Bạn cần hiểu **baseline** là trạng thái cấu hình chuẩn dùng làm điểm so sánh.
-
-Ví dụ Linux baseline có thể gồm:
-
-```text
-Hostname
-OS
-Kernel version
-Users
-Groups
-Sudo configuration
-SSH configuration
-Filesystem permissions
-Network configuration
-Installed packages
-Running services
+```bash
+rm file
 ```
 
-Day 1 mới tập trung baseline ở mức foundation.
+trong lab có thể chỉ mất test file.
+
+Trong production, nếu nhầm file configuration hoặc data file thì hậu quả hoàn toàn khác.
 
 ---
 
-## 12. Asset inventory
+# Phần 5 — Change Authorization
 
-Bạn phải biết một infrastructure asset nên được nhận diện bằng dữ liệu như:
+Bạn cần hiểu không nên thực hiện infrastructure change tùy ý.
+
+Một controlled change thường phải xác định:
+
+- What will change?
+- Why?
+- Which systems are affected?
+- Who approved?
+- When will it happen?
+- What is the implementation plan?
+- How will success be verified?
+- What is the rollback plan?
+- What evidence must be collected?
+
+Day 1 chưa đi sâu ServiceNow change workflow — phần đó sẽ xuất hiện ở Day 11 — nhưng ngay từ Day 1 bạn phải xây tư duy `authorized change`.
+
+---
+
+# Phần 6 — Least Privilege
+
+`Least privilege` nghĩa là account chỉ được cấp đúng quyền cần thiết để thực hiện nhiệm vụ.
+
+Không nên:
+
+```text
+User cần restart một service
+→ cấp toàn bộ root access.
+```
+
+Tốt hơn là:
+
+```text
+User cần restart một service
+→ chỉ cho phép sudo đối với operation cụ thể nếu policy cho phép.
+```
+
+Bạn sẽ áp dụng principle này trong chính Day 1 khi cấu hình:
+
+- users;
+- groups;
+- file permissions;
+- `sudo`;
+- `SSH`.
+
+Đây là một chủ đề nối trực tiếp giữa Linux administration và enterprise security.
+
+---
+
+# Phần 7 — SOP và Runbook
+
+Bạn cần phân biệt khái niệm:
+
+### SOP — Standard Operating Procedure
+
+Mô tả procedure chuẩn của tổ chức.
+
+Ví dụ:
+
+`Linux User Provisioning SOP`
+
+có thể quy định:
+
+- request phải đến từ đâu;
+- ai được approve;
+- naming convention;
+- group nào được phép;
+- account expiry;
+- verification;
+- evidence.
+
+### Runbook
+
+Thường thiên về operational execution cụ thể.
+
+Ví dụ:
+
+`Linux SSH Access Troubleshooting Runbook`
+
+có thể gồm:
+
+```text
+1. Verify server reachable
+2. Verify TCP/22
+3. Verify SSH service
+4. Verify user
+5. Verify key
+6. Inspect logs
+7. Escalate if authentication backend issue
+```
+
+Bạn phải học cách **làm theo runbook trước khi improvisation**.
+
+---
+
+# Phần 8 — Incident Escalation
+
+Day 1 cần hiểu escalation không phải là “không biết thì đẩy ticket”.
+
+Một escalation tốt phải chứa đủ context.
+
+Ví dụ:
+
+```text
+Host: rhel-lab01
+Time: 10:35 ICT
+Issue: SSH authentication denied
+Source: admin-workstation
+User: ops01
+Network connectivity: OK
+TCP/22: reachable
+SSH service: running
+Password login: disabled as expected
+Public key: present
+Relevant log: ...
+Actions performed: ...
+Configuration changes: none
+```
+
+Như vậy người nhận escalation có thể tiếp tục investigation mà không phải bắt đầu lại từ đầu.
+
+---
+
+# Phần 9 — Access Management
+
+Bạn sẽ học foundational lifecycle:
+
+```text
+Request
+   ↓
+Approval
+   ↓
+Provision
+   ↓
+Verify
+   ↓
+Use
+   ↓
+Review
+   ↓
+Modify/Revoke
+```
+
+Access không chỉ là username/password.
+
+Nó có thể phụ thuộc vào:
+
+- account;
+- group;
+- file permissions;
+- `sudo`;
+- SSH key;
+- authorized source;
+- authentication policy.
+
+Day 1 tập trung vào local Linux access và secure administrative access.
+
+---
+
+# Phần 10 — Configuration Baseline
+
+`Configuration baseline` là trạng thái chuẩn hoặc trạng thái đã được ghi nhận của hệ thống.
+
+Ví dụ baseline Linux có thể gồm:
+
+```text
+hostname
+OS
+kernel
+IP address
+users/groups
+permissions
+sudo configuration
+SSH configuration
+disk information
+```
+
+Nếu ngày mai xảy ra vấn đề, bạn có thể so sánh:
+
+```text
+Known good state
+vs
+Current state
+```
+
+Đây là nền tảng của configuration troubleshooting.
+
+---
+
+# Phần 11 — Asset Inventory
+
+Bạn cần hiểu một infrastructure engineer phải biết mình đang quản lý cái gì.
+
+Linux inventory cơ bản có thể gồm:
 
 ```text
 Hostname
-IP address
-OS
+Operating system
 Distribution
 Version
 Kernel
+Architecture
 CPU
 Memory
 Disk
-Environment
-Owner
-Role
-Asset ID
+IP addresses
+Network interfaces
+Administrative access
 ```
 
-Điều này liên quan trực tiếp tới asset management và CMDB ở các Day sau.
-
----
-
-## 13. Audit evidence
-
-Học cách chứng minh:
-
-> “Tôi đã thực hiện đúng operation và kết quả đúng như yêu cầu.”
-
-Evidence có thể gồm:
-
-- command;
-- command output;
-- log;
-- screenshot;
-- timestamp;
-- hostname;
-- username;
-- ticket/change ID;
-- config file;
-- before/after state.
-
-Một screenshot không có hostname/timestamp/context thường là evidence yếu.
-
----
-
-## 14. Lab readiness
-
-Trước lab phải kiểm tra:
-
-- administrative workstation;
-- terminal/SSH client;
-- approved account;
-- Linux/RHEL VM;
-- network access;
-- privilege level;
-- evidence folder;
-- safe test data;
-- rollback capability.
-
-Đây chính là bridge từ governance sang hands-on Linux.
-
----
-
-# Phần 4 — Linux Architecture Foundation
-
-Sau Infrastructure Operations foundation, Day 1 chuyển sang Linux.
-
-## 15. Linux architecture
-
-Bạn cần hình dung hệ thống theo các layer cơ bản:
-
-```text
-User
- ↓
-Applications / Utilities
- ↓
-Shell
- ↓
-System libraries
- ↓
-Kernel
- ↓
-Hardware
-```
-
-Cần hiểu mối liên hệ giữa:
-
-- hardware;
-- kernel;
-- shell;
-- userspace;
-- processes;
-- filesystem.
-
----
-
-## 16. Kernel
-
-`kernel` là core của operating system.
-
-Bạn cần nắm ở mức foundation:
-
-- process scheduling;
-- memory management;
-- device management;
-- filesystem interaction;
-- networking;
-- security/access control.
-
-Một số command kiểm tra:
+Ví dụ một số command:
 
 ```bash
-uname
+hostnamectl
+cat /etc/os-release
 uname -r
-uname -a
+uname -m
+lscpu
+free -h
+lsblk
+ip addr
 ```
 
-Day 2 mới đi sâu hơn vào process/service/resource operations.
+Day 1 lab yêu cầu bạn submit **system inventory evidence**. Infrastructure_Operations_14_Da…
 
 ---
 
-## 17. Shell
+# Phần 12 — Audit Evidence
 
-Phân biệt:
+Một thao tác đã thực hiện nhưng không có evidence có thể rất khó chứng minh sau này.
 
-**Terminal ≠ Shell ≠ Kernel.**
+Day 1 cần hiểu các dạng evidence như:
 
-Shell là command interpreter giữa user và operating system.
+```text
+Command output
+Terminal log
+Screenshot
+Timestamp
+Configuration file
+File metadata
+User/group listing
+Permission listing
+SSH verification
+sudo verification
+System inventory
+Ticket/change reference
+```
+
+Evidence tốt phải trả lời được:
+
+```text
+Who?
+What?
+Where?
+When?
+Result?
+```
+
+Sau này chủ đề này sẽ được mở rộng rất mạnh ở logging, ServiceNow, IAM audit và Day 14.
+
+---
+
+# Phần 13 — Lab Readiness
+
+Trước khi chạy lab, cần chuẩn bị:
+
+```text
+Administrative workstation
+Linux/RHEL system
+Approved account
+Network connectivity
+Terminal/SSH client
+Evidence directory
+Naming convention
+Timestamp
+Rollback awareness
+```
+
+Không sử dụng:
+
+- production credentials;
+- real private keys;
+- production systems;
+- sensitive business data.
+
+---
+
+# Phần 14 — Linux Architecture
+
+Sau phần operations foundation, Day 1 chuyển sang Linux.
+
+Bạn cần xây mental model cơ bản:
+
+```text
+Hardware
+   ↓
+Linux Kernel
+   ↓
+System libraries / services
+   ↓
+Shell
+   ↓
+Commands / Applications
+   ↓
+User
+```
+
+Không cần Day 1 hiểu toàn bộ internals của Linux kernel, nhưng phải hiểu vai trò từng tầng.
+
+---
+
+# Phần 15 — Kernel
+
+`kernel` là thành phần lõi của operating system.
+
+Nó chịu trách nhiệm các lĩnh vực như:
+
+- CPU/process management;
+- memory management;
+- device interaction;
+- filesystem;
+- networking;
+- system calls.
 
 Ví dụ:
+
+```bash
+uname -r
+```
+
+để xem kernel version.
+
+Bạn cũng cần hiểu:
+
+`Linux` về mặt kỹ thuật là kernel, còn một hệ điều hành hoàn chỉnh như `RHEL`, `Ubuntu`, `Debian` bao gồm kernel + userspace tools + package ecosystem + distribution-specific components.
+
+---
+
+# Phần 16 — Shell
+
+`Shell` là command interpreter.
+
+Ví dụ phổ biến:
 
 ```text
 bash
@@ -461,84 +562,128 @@ sh
 zsh
 ```
 
-Day 1 chủ yếu sử dụng Bash-compatible CLI.
+Trong chương trình này bạn sẽ chủ yếu làm việc với `Bash`.
 
----
+Workflow cơ bản:
 
-## 18. Linux distributions
-
-Hiểu Linux kernel được đóng gói thành các distributions khác nhau.
-
-Ví dụ:
-
-- Red Hat Enterprise Linux;
-- Rocky Linux;
-- AlmaLinux;
-- Ubuntu;
-- Debian;
-- SUSE Linux Enterprise Server.
+```text
+User
+ ↓
+Shell
+ ↓
+Command
+ ↓
+Kernel / system resources
+ ↓
+Output
+```
 
 Cần phân biệt:
 
+`Shell`
+
+với:
+
+`Terminal`
+
+với:
+
+`Kernel`.
+
+---
+
+# Phần 17 — Linux Distributions
+
+Bạn cần hiểu `distribution` là một operating system distribution xây dựng quanh Linux kernel.
+
+Ví dụ:
+
 ```text
-Linux
-Linux kernel
-Linux distribution
-RHEL
+Red Hat Enterprise Linux
+Rocky Linux
+AlmaLinux
+Ubuntu
+Debian
+SUSE Linux Enterprise Server
 ```
 
----
-
-## 19. Red Hat Enterprise Linux — RHEL
-
-RHEL được nhấn mạnh vì syllabus hướng tới enterprise operations.
-
-Cần hiểu ở mức tổng quan:
-
-- enterprise Linux distribution;
-- lifecycle/support;
-- package ecosystem;
-- enterprise tooling;
-- security focus;
-- compatibility/certification.
-
-Day 2 mới đi sâu `dnf`, `yum`, `rpm`, repository và subscription awareness.
+Day 1 đặc biệt yêu cầu nhận biết **RHEL và các Linux distributions khác**. Infrastructure_Operations_14_Da…
 
 ---
 
-# Phần 5 — Linux Filesystem & CLI
+# Phần 18 — RHEL
 
-## 20. Filesystem hierarchy
+`Red Hat Enterprise Linux (RHEL)` sẽ là trọng tâm Linux enterprise của chương trình.
 
-Bạn phải hiểu Linux filesystem bắt đầu từ:
+Day 1 mới tập trung vào foundation.
+
+Day 2 sẽ tiếp tục sâu hơn với:
+
+- `dnf/yum/rpm`;
+- `systemd`;
+- processes;
+- networking;
+- `SELinux`;
+- `firewalld`;
+- disks;
+- logs;
+- Bash;
+- cron;
+- backup.
+
+Vì vậy Day 1 phải làm cho CLI, files, permissions, users và SSH trở nên chắc chắn trước.
+
+---
+
+# Phần 19 — Filesystem Hierarchy
+
+Bạn cần hiểu filesystem Linux được tổ chức dưới root:
 
 ```text
 /
 ```
 
-Các directory quan trọng ban đầu gồm:
+và các directory quan trọng như:
 
 ```text
-/
+/etc
 /home
 /root
-/etc
 /var
 /tmp
 /usr
-/bin
-/sbin
+/opt
+/boot
 /dev
 /proc
+/sys
 ```
 
-Không cần thuộc máy móc; cần hiểu mục đích operational của từng vùng.
+Day 1 không cần thuộc từng file, nhưng phải biết loại dữ liệu thường nằm ở đâu.
+
+Ví dụ:
+
+`/etc`
+
+→ system configuration.
+
+`/home`
+
+→ normal users' home directories.
+
+`/var`
+
+→ variable data, logs và application state.
+
+`/tmp`
+
+→ temporary files.
 
 ---
 
-## 21. CLI navigation
+# Phần 20 — CLI Navigation
 
-Các command nền tảng:
+Bạn phải sử dụng thành thạo:
 
 ```bash
 pwd
@@ -546,23 +691,30 @@ ls
 cd
 ```
 
-Sau đó kết hợp:
+và hiểu:
+
+```text
+current working directory
+parent directory
+home directory
+root directory
+```
+
+Ví dụ:
 
 ```bash
-ls -l
-ls -a
+pwd
 ls -la
+cd /etc
 cd ..
 cd ~
 ```
 
-Bạn phải luôn biết:
-
-> mình đang đứng ở đâu và command sẽ tác động vào đâu.
-
 ---
 
-## 22. Absolute và relative paths
+# Phần 21 — Absolute Path và Relative Path
+
+Đây là concept cực kỳ quan trọng.
 
 ### Absolute path
 
@@ -574,20 +726,30 @@ Bắt đầu từ `/`.
 
 ### Relative path
 
-Phụ thuộc `current working directory`.
+Được tính từ current working directory.
 
 ```bash
-./file.txt
-../backup/
+../logs
+./script.sh
 ```
 
-Sai path là nguyên nhân phổ biến của operational mistakes.
+Nếu hiểu sai path, một command như:
+
+```bash
+rm
+cp
+mv
+chmod
+chown
+```
+
+có thể tác động nhầm object.
 
 ---
 
-## 23. File và directory operations
+# Phần 22 — File & Directory Operations
 
-Cần hiểu:
+Day 1 yêu cầu bạn làm được các operation cơ bản:
 
 ```bash
 touch
@@ -598,32 +760,36 @@ rm
 rmdir
 ```
 
-và hành vi của chúng với:
+và biết cách kiểm tra trước/sau.
 
-- file;
-- directory;
-- recursive operation;
-- overwrite;
-- deletion.
+Ví dụ:
 
-Đặc biệt phải hiểu rủi ro của:
+```bash
+cp source.txt backup.txt
+```
+
+Verification:
+
+```bash
+ls -l source.txt backup.txt
+```
+
+Bạn cũng phải phát triển thói quen rất quan trọng:
+
+> Với destructive commands, xác minh target trước khi execute.
+
+Đặc biệt với:
 
 ```bash
 rm
 rm -r
-rm -f
-rm -rf
 ```
-
-chứ không chỉ học syntax.
 
 ---
 
-# Phần 6 — Linux Command Processing
+# Phần 23 — Command Syntax
 
-## 24. Command syntax
-
-Mẫu tổng quát:
+Bạn cần hiểu cấu trúc tổng quát:
 
 ```text
 command [options] [arguments]
@@ -632,42 +798,54 @@ command [options] [arguments]
 Ví dụ:
 
 ```bash
-ls -l /etc
+ls -la /etc
 ```
 
 Trong đó:
 
 ```text
-ls     command
--l     option
-/etc   argument
+ls        command
+-la       options
+/etc      argument
 ```
+
+Đây là nền tảng để học tất cả Linux commands về sau.
 
 ---
 
-## 25. Pipes
+# Phần 24 — Pipes
 
-Pipe:
+`pipe` ký hiệu:
 
 ```bash
 |
 ```
 
-chuyển `stdout` của command trước sang `stdin` của command sau.
+cho phép output của command trước trở thành input của command sau.
 
 Ví dụ:
 
 ```bash
-ls -l /etc | grep ssh
+cat /etc/passwd | grep ops
 ```
 
-Đây là concept rất quan trọng vì Linux administration phụ thuộc mạnh vào command composition.
+Mental model:
+
+```text
+command A
+   |
+stdout
+   |
+command B
+```
+
+Đây là một trong những khả năng mạnh nhất của Unix/Linux CLI.
 
 ---
 
-## 26. Redirection
+# Phần 25 — Redirection
 
-Cần phân biệt:
+Bạn phải hiểu ít nhất:
 
 ```bash
 >
@@ -679,44 +857,57 @@ Cần phân biệt:
 Ví dụ:
 
 ```bash
-command > output.txt
+echo "test" > file.txt
 ```
 
-và:
+ghi đè.
 
 ```bash
-command >> output.txt
+echo "test2" >> file.txt
 ```
 
-khác nhau rất lớn vì `>` có thể overwrite file.
+append.
+
+Operational risk quan trọng:
+
+```bash
+>
+```
+
+có thể overwrite file.
+
+Do đó redirection cũng phải được xem như một configuration/data-changing action.
 
 ---
 
-## 27. Command history
+# Phần 26 — Command History
 
-Các khái niệm:
+Bạn cần học cách xem và sử dụng command history:
 
 ```bash
 history
 ```
 
-và command recall.
+và hiểu lợi ích operational:
 
-History giúp:
-
-- tăng productivity;
+- nhớ command vừa chạy;
 - reproduce troubleshooting;
-- tìm command vừa chạy.
+- thu thập evidence;
+- tránh gõ lại command dài.
 
-Nhưng cũng có security implications nếu command chứa sensitive information.
+Nhưng cũng phải biết security concern:
+
+**không nhập password, token hoặc secret trực tiếp trong command line nếu có khả năng bị lưu vào history.**
 
 ---
 
-## 28. Help utilities
+# Phần 27 — Help Utilities
 
-Bạn không cần nhớ mọi option.
+Một administrator không cần thuộc lòng mọi option.
 
-Bạn cần biết cách tự tìm:
+Quan trọng hơn là biết tự tìm documentation.
+
+Bạn sẽ dùng:
 
 ```bash
 man
@@ -731,51 +922,94 @@ man chmod
 chmod --help
 ```
 
-Đây là kỹ năng quan trọng hơn việc học thuộc command.
+Đây là một kỹ năng vận hành thực tế rất quan trọng.
 
 ---
 
-## 29. Safe command execution
+# Phần 28 — Safe Command Execution
 
-Trước command thay đổi hệ thống:
+Bạn sẽ học cách phân loại command trước khi chạy.
+
+### Read-only
+
+Ví dụ:
+
+```bash
+pwd
+ls
+id
+cat
+stat
+```
+
+### State-changing
+
+Ví dụ:
+
+```bash
+mkdir
+cp
+mv
+chmod
+chown
+useradd
+```
+
+### Potentially destructive
+
+Ví dụ:
+
+```bash
+rm
+```
+
+hoặc bất kỳ command nào modify/remove data.
+
+Quy trình an toàn:
 
 ```text
 Understand command
-↓
-Confirm target
-↓
-Check current state
-↓
-Assess impact
-↓
-Check privilege
-↓
-Execute
-↓
-Verify
-↓
-Record evidence
+→ identify target
+→ check current state
+→ check authorization
+→ execute
+→ verify
+→ retain evidence
 ```
-
-Đây sẽ là operational pattern xuyên suốt 14 Day.
 
 ---
 
-# Phần 7 — Linux Identity & Permissions
+# Phần 29 — Users & Groups
 
-## 30. Users và groups
+Bạn cần hiểu Linux identity model cơ bản.
 
-Bạn cần hiểu Linux identity model:
+Một user có:
 
 ```text
-user
+username
 UID
 primary group
 supplementary groups
-GID
+home directory
+login shell
 ```
 
-Các command cần làm quen:
+Một group có:
+
+```text
+group name
+GID
+members
+```
+
+Bạn cần biết information thường liên quan đến:
+
+```text
+/etc/passwd
+/etc/group
+```
+
+và các command inspection như:
 
 ```bash
 id
@@ -783,51 +1017,55 @@ whoami
 groups
 ```
 
-và sau này trong lab:
-
-```bash
-useradd
-usermod
-userdel
-groupadd
-groupdel
-```
-
 ---
 
-## 31. Ownership
+# Phần 30 — Ownership
 
-Mỗi file thường có:
+Mỗi filesystem object thường có:
 
 ```text
 user owner
 group owner
 ```
 
-Kiểm tra bằng:
+Ví dụ:
 
 ```bash
-ls -l
+ls -l file.txt
 ```
+
+có thể cho thấy:
+
+```text
+-rw-r----- 1 alice ops ...
+```
+
+`alice`
+
+→ user owner.
+
+`ops`
+
+→ group owner.
 
 ---
 
-## 32. File permissions
+# Phần 31 — File Permissions
 
-Ba permission cơ bản:
-
-```text
-r = read
-w = write
-x = execute
-```
-
-áp dụng cho:
+Bạn phải hiểu ba nhóm permission:
 
 ```text
 user
 group
 other
+```
+
+và ba loại quyền:
+
+```text
+r = read
+w = write
+x = execute
 ```
 
 Ví dụ:
@@ -836,336 +1074,325 @@ Ví dụ:
 -rwxr-x---
 ```
 
-Bạn phải đọc được permission string này.
-
----
-
-## 33. `chmod`
-
-Dùng thay đổi file permissions.
-
-Hai kiểu chính:
-
-### Symbolic
-
-```bash
-chmod u+x file
-```
-
-### Numeric/octal
-
-```bash
-chmod 750 file
-```
-
-Bạn phải hiểu ý nghĩa từng bit, không học thuộc số permission.
-
----
-
-## 34. `chown`
-
-Dùng thay đổi owner.
-
-```bash
-chown user file
-```
-
-hoặc:
-
-```bash
-chown user:group file
-```
-
----
-
-## 35. `chgrp`
-
-Thay đổi group ownership:
-
-```bash
-chgrp group file
-```
-
----
-
-## 36. `umask`
-
-`umask` quyết định permission mặc định bị loại bỏ khi tạo:
-
-- files;
-- directories.
-
-Cần hiểu quan hệ giữa:
+phải đọc được thành:
 
 ```text
-default permission
+Owner: rwx
+Group: r-x
+Other: ---
+```
+
+Đây là một trong những phần quan trọng nhất của Day 1.
+
+---
+
+# Phần 32 — chmod / chown / chgrp
+
+Ba command phải hiểu rõ.
+
+### `chmod`
+
+Thay đổi permission.
+
+```bash
+chmod 640 file.txt
+```
+
+### `chown`
+
+Thay đổi owner.
+
+```bash
+chown user1 file.txt
+```
+
+hoặc owner + group:
+
+```bash
+chown user1:ops file.txt
+```
+
+### `chgrp`
+
+Thay đổi group ownership.
+
+```bash
+chgrp ops file.txt
+```
+
+Không chỉ cần biết syntax mà còn phải hiểu security consequence của mỗi thay đổi.
+
+---
+
+# Phần 33 — umask
+
+`umask` kiểm soát default permissions khi tạo file/directory mới.
+
+Bạn cần hiểu:
+
+```bash
+umask
+```
+
+và conceptual relationship giữa:
+
+```text
+default maximum permissions
 -
 umask
 =
-effective creation permission
+resulting permissions
 ```
 
-Đây là một topic thường gây nhầm lẫn và sẽ cần học kỹ.
+Phần tính permission cụ thể sẽ được phân tích kỹ khi học Module Lý thuyết chi tiết.
 
 ---
 
-# Phần 8 — Privileged Administration
+# Phần 34 — sudo
 
-## 37. `sudo`
+`sudo` cho phép user được thực thi authorized command với privilege cao hơn.
 
-`sudo` cho phép thực hiện command với elevated privilege trong phạm vi được cấu hình.
-
-Cần hiểu khác biệt giữa:
+Bạn cần hiểu:
 
 ```text
 normal user
-sudo
-root
+      ↓
+sudo policy
+      ↓
+authorized privileged command
 ```
 
-và tại sao enterprise operations ưu tiên:
+Mục tiêu không phải là:
 
-```text
-named account + sudo
-```
+> Làm sao để user thành root.
 
-thay vì dùng chung `root`.
+Mục tiêu là:
+
+> Làm sao cấp đúng administrative capability cần thiết với least privilege.
 
 ---
 
-## 38. Least-privilege sudo
+# Phần 35 — SSH Authentication
 
-Không chỉ học:
+`SSH` là nền tảng của remote Linux administration.
 
-```bash
-sudo command
-```
-
-mà phải hiểu cách thiết kế privilege giới hạn.
-
-Ví dụ conceptual:
+Mental model:
 
 ```text
-operator chỉ được phép restart một service cụ thể
+Administrative Workstation
+          |
+          | SSH
+          v
+      Linux Server
 ```
 
-thay vì được toàn quyền root.
+Bạn cần hiểu:
 
-Cũng phải hiểu:
-
-```text
-/etc/sudoers
-/etc/sudoers.d/
-visudo
-```
-
-và tại sao không chỉnh `sudoers` tùy tiện bằng text editor.
-
----
-
-# Phần 9 — Secure Administrative Access với SSH
-
-## 39. SSH authentication
-
-Hiểu flow cơ bản:
-
-```text
-SSH client
-     |
-     | TCP connection
-     v
-SSH server
-     |
-Authentication
-     |
-Authorization
-     |
-Shell/session
-```
-
-Các authentication method có thể gồm:
-
-- password;
-- public-key authentication.
+- SSH client;
+- SSH server;
+- username;
+- authentication;
+- server identity;
+- authorization.
 
 Day 1 tập trung vào secure administrative access.
 
 ---
 
-## 40. SSH key management
+# Phần 36 — SSH Key Management
+
+Bạn sẽ học key-based authentication gồm:
+
+```text
+Private Key
+     |
+     | cryptographic proof
+     v
+SSH authentication
+     ^
+     |
+Public Key
+```
+
+Thông thường:
+
+Private key:
+
+```text
+giữ trên administrative workstation
+```
+
+Public key:
+
+```text
+được đặt trên authorized server/account
+```
 
 Bạn phải hiểu:
 
-```text
-private key
-public key
-authorized_keys
-```
+> Public key có thể được phân phối; private key phải được bảo vệ.
 
-Quan hệ:
-
-```text
-Client private key
-        ↓
-authentication
-        ↓
-Server authorized public key
-```
-
-Private key phải được bảo vệ tuyệt đối.
+Không gửi private key lên ticket, chat, screenshot hay evidence package.
 
 ---
 
-## 41. SSH key generation
+# Phần 37 — Secure Administrative Access
 
-Command điển hình:
-
-```bash
-ssh-keygen
-```
-
-Cần hiểu:
-
-- algorithm;
-- key pair;
-- passphrase;
-- output files;
-- permissions.
-
-Không được chia sẻ private key thật trong lab evidence.
-
----
-
-## 42. `authorized_keys`
-
-Public key hợp lệ được đặt tại:
-
-```bash
-~/.ssh/authorized_keys
-```
-
-Cần hiểu importance của:
+Cuối phần lý thuyết, tất cả các concept phía trên hội tụ vào một workflow:
 
 ```text
-ownership
-directory permission
-file permission
+Approved admin
+      ↓
+Approved workstation
+      ↓
+Secure authentication
+      ↓
+Restricted user
+      ↓
+Least-privilege sudo
+      ↓
+Authorized operation
+      ↓
+Verification
+      ↓
+Audit evidence
 ```
 
-Sai permission có thể dẫn đến SSH authentication failure.
-
----
-
-## 43. Secure administrative access
-
-Không chỉ là “SSH vào được”.
-
-Phải đảm bảo:
-
-- đúng account;
-- approved source;
-- approved authentication;
-- least privilege;
-- protected key;
-- permission đúng;
-- access được audit;
-- unauthorized access bị deny.
-
-Đây là kết thúc logic của Module Lý thuyết Day 1.
+Đây chính là cách Day 1 liên kết `Infrastructure Operations` với Linux security.
 
 ---
 
 # MODULE 2 — THỰC HÀNH
 
-Module này ánh xạ trực tiếp toàn bộ `Assignment/Lab` của Day 1: chuẩn bị workstation và Linux/RHEL lab, thực hành CLI và text processing, quản lý users/groups/permissions, cấu hình least-privilege `sudo`, thiết lập SSH key authentication, kiểm tra allow/deny access, ghi lại command và nộp inventory/access/configuration evidence. Infrastructure_Operations_14_Da…
+## Linux/RHEL Administrative Lab + Access/Security/Evidence Lab
 
-Module Thực hành nên được triển khai theo chuỗi dưới đây.
+Assignment chính thức của Day 1 yêu cầu bạn chuẩn bị workstation và Linux/RHEL lab, thực hiện filesystem/CLI exercises, quản lý users/groups, permissions, `sudo`, SSH keys, kiểm thử allowed/denied access và nộp inventory/access/configuration evidence. Infrastructure_Operations_14_Da…
+
+Module Thực hành vì vậy sẽ được tổ chức thành chuỗi lab có dependency như sau:
+
+```text
+Lab readiness
+      ↓
+System inventory
+      ↓
+CLI/filesystem
+      ↓
+Search/text processing
+      ↓
+Users/groups
+      ↓
+Ownership/permissions
+      ↓
+sudo
+      ↓
+SSH keys
+      ↓
+Allowed/denied testing
+      ↓
+Evidence package
+```
 
 ---
 
-# Lab 1 — Administrative Workstation Preparation
+## Lab 1 — Administrative Workstation Preparation
 
-## Mục tiêu
-
-Chuẩn bị workstation dùng để quản trị.
-
-Cần xác nhận:
+Bạn sẽ chuẩn bị administrative workstation với:
 
 ```text
-Terminal available
-SSH client available
-Evidence directory available
-Lab credentials ready
-Linux VM reachable
-No production target involved
+Terminal
+SSH client
+Working directory
+Evidence repository
+Naming convention
+Approved account information
+Target Linux/RHEL information
 ```
 
-Ví dụ evidence repository:
+Ví dụ evidence structure có thể theo dạng:
 
 ```text
-Day01/
-├── 01_inventory/
-├── 02_cli/
-├── 03_users_groups/
-├── 04_permissions/
-├── 05_sudo/
-├── 06_ssh/
-└── 07_final_evidence/
+day1/
+├── inventory/
+├── cli/
+├── users-groups/
+├── permissions/
+├── sudo/
+└── ssh/
 ```
+
+Mục tiêu là ngay từ đầu lab đã có chỗ lưu evidence có tổ chức.
 
 ---
 
 # Lab 2 — Approved Access Checklist
 
-Bạn sẽ tạo checklist xác minh trước khi thao tác:
+Trước khi thao tác Linux server, bạn phải xác minh:
 
 ```text
-[ ] Target hostname confirmed
-[ ] Environment confirmed
-[ ] Authorized account confirmed
-[ ] Access approved
-[ ] Required privilege identified
-[ ] Evidence location prepared
-[ ] Rollback understood
-[ ] No real credential recorded
+Target system đúng chưa?
+Environment là lab/non-production?
+Account có được authorize?
+Scope của account là gì?
+Có sudo hay không?
+SSH source có được phép?
+Lab có rollback path?
 ```
 
-Mục đích là luyện operational discipline ngay từ Day 1.
+Mục tiêu không chỉ là kết nối được mà còn phải chứng minh:
+
+> Tôi đang truy cập đúng hệ thống, bằng đúng account, với đúng phạm vi.
 
 ---
 
-# Lab 3 — Linux/RHEL Lab Environment Readiness
+# Lab 3 — Linux/RHEL Lab Readiness
 
-Bạn sẽ kiểm tra:
+Bạn sẽ xác minh machine bằng các command dạng:
 
 ```bash
+hostnamectl
+cat /etc/os-release
+uname -r
 whoami
 id
-hostname
-uname -a
-cat /etc/os-release
 pwd
 ```
 
-Từ đó xác định:
+Sau đó ghi nhận:
 
 ```text
-Current user
+hostname
+distribution
+version
+kernel
+current user
 UID/GID
-Hostname
-Kernel
-Linux distribution
-RHEL/version nếu có
-Current working directory
 ```
-
-Đây cũng là bước đầu tiên của system inventory.
 
 ---
 
-# Lab 4 — CLI Navigation
+# Lab 4 — System Inventory
 
-Thực hành:
+Bạn phải thu thập system inventory baseline.
+
+Có thể gồm:
+
+```bash
+hostnamectl
+cat /etc/os-release
+uname -a
+lscpu
+free -h
+lsblk
+ip addr
+```
+
+Mục tiêu là tạo evidence mô tả lab machine trước khi thực hiện thay đổi.
+
+---
+
+# Lab 5 — CLI Navigation
+
+Bạn sẽ luyện:
 
 ```bash
 pwd
@@ -1173,643 +1400,591 @@ ls
 ls -l
 ls -la
 cd
-cd ..
-cd ~
 ```
 
-Bạn phải chứng minh được:
+và phải thành thạo:
 
-- current directory;
-- parent directory;
-- home directory;
-- hidden files;
-- long listing.
+```text
+/
+.
+..
+~
+absolute path
+relative path
+```
+
+Bạn sẽ cần chứng minh mình hiểu path bằng cách di chuyển giữa nhiều directory mà không phụ thuộc GUI.
 
 ---
 
-# Lab 5 — File và Directory Operations
+# Lab 6 — File & Directory Creation
 
-Thực hành tạo controlled workspace.
-
-Ví dụ:
-
-```text
-day1-lab/
-├── input/
-├── working/
-├── output/
-└── backup/
-```
-
-Sau đó dùng:
+Bạn sẽ thực hành:
 
 ```bash
 mkdir
 touch
+```
+
+Ví dụ tạo cấu trúc:
+
+```text
+day1_lab/
+├── input/
+├── output/
+└── archive/
+```
+
+Sau mỗi operation phải verify:
+
+```bash
+ls -l
+```
+
+hoặc:
+
+```bash
+find
+```
+
+---
+
+# Lab 7 — Copy / Move / Delete
+
+Bạn sẽ thực hiện:
+
+```bash
 cp
 mv
 rm
 rmdir
 ```
 
-Mỗi command phải có:
+nhưng theo safe workflow:
 
 ```text
-Before state
-Command
-Expected result
-Verification
-Evidence
+Check source
+→ Check destination
+→ Execute
+→ Verify
 ```
+
+Mục tiêu không phải chỉ biết command mà phải tránh sai target.
 
 ---
 
-# Lab 6 — Absolute/Relative Path Exercises
+# Lab 8 — Searching
 
-Bạn sẽ thực hiện cùng một operation bằng:
-
-```text
-absolute path
-```
-
-và:
-
-```text
-relative path
-```
-
-để hiểu rõ path resolution.
-
-Ví dụ concept:
-
-```bash
-/home/student/day1-lab/input/file.txt
-```
-
-so với:
-
-```bash
-../input/file.txt
-```
-
----
-
-# Lab 7 — Searching Exercises
-
-Syllabus yêu cầu thực hiện searching.
+Assignment yêu cầu có `searching exercises`.
 
 Bạn sẽ tìm:
 
-- file;
-- directory;
-- filename patterns;
-- nội dung trong file.
+- files;
+- directories;
+- text content.
 
-Các công cụ phù hợp có thể gồm:
+Ví dụ các utility cơ bản có thể gồm:
 
 ```bash
 find
 grep
 ```
 
-Day 1 dùng ở foundation level; Day 2 mới đi sâu hơn vào `grep/awk/sed` và regular expressions. Infrastructure_Operations_14_Da…
+Sau này Day 2 mới mở rộng mạnh hơn sang:
+
+```text
+grep
+awk
+sed
+regular expressions
+```
 
 ---
 
-# Lab 8 — Text-Processing Exercises
+# Lab 9 — Text Processing Foundation
 
-Bạn sẽ thực hành processing output bằng những công cụ CLI cơ bản, đặc biệt:
-
-```text
-pipes
-redirection
-search/filter
-```
-
-Ví dụ pattern:
+Bạn sẽ thực hành những workflow dạng:
 
 ```bash
+cat file
+grep pattern file
 command | grep pattern
 ```
 
-hoặc:
+Ví dụ:
 
 ```bash
-command > evidence.txt
+cat /etc/passwd | grep ops
 ```
 
-Mục tiêu là hiểu data flow qua CLI.
+Mục tiêu là bắt đầu xây tư duy:
+
+```text
+input
+→ processing/filtering
+→ output
+```
+
+Đây là nền cho log investigation và automation sau này.
 
 ---
 
-# Lab 9 — Users Management
+# Lab 10 — Controlled User Creation
 
-Trong controlled lab, bạn sẽ:
+Bạn sẽ tạo test users trong lab.
+
+Ví dụ conceptual workflow:
 
 ```text
 Create user
-Inspect user
-Modify user
-Verify user
-Optionally remove lab user during cleanup
+→ inspect user
+→ verify UID/GID
+→ verify home
+→ test login/access
 ```
 
-Các command sẽ xoay quanh:
+Command thực tế sẽ được giải thích chi tiết khi học Module Thực hành.
 
-```bash
-useradd
-id
-usermod
-userdel
-```
-
-Tất cả chỉ chạy trong authorized lab.
+Quan trọng: chỉ dùng **controlled lab users**, không dùng production account.
 
 ---
 
-# Lab 10 — Groups Management
+# Lab 11 — Controlled Group Management
 
-Thực hành:
-
-```bash
-groupadd
-usermod
-groups
-id
-```
-
-Mục tiêu:
+Bạn sẽ:
 
 - tạo group;
 - thêm user vào group;
-- verify membership;
-- hiểu primary/supplementary group.
+- xác minh membership;
+- kiểm tra access dựa trên group.
+
+Mental model:
+
+```text
+User
+  ↓
+Group membership
+  ↓
+Group permission
+  ↓
+Resource access
+```
 
 ---
 
-# Lab 11 — Ownership Configuration
+# Lab 12 — Ownership Configuration
 
-Bạn sẽ tạo file với owner/group khác nhau và sử dụng:
+Bạn sẽ tạo file/directory rồi thay đổi:
+
+```text
+user ownership
+group ownership
+```
+
+bằng:
 
 ```bash
 chown
 chgrp
-ls -l
 ```
 
-để quan sát ownership change.
-
-Phải lưu evidence trước và sau thay đổi.
-
----
-
-# Lab 12 — File Permission Configuration
-
-Thực hành cả hai kiểu:
-
-```text
-symbolic permission
-octal permission
-```
-
-Ví dụ:
-
-```bash
-chmod u+x script.sh
-chmod 640 report.txt
-chmod 750 directory
-```
-
-Sau đó verify:
+Sau đó verify bằng:
 
 ```bash
 ls -l
-```
-
-Nhưng quan trọng hơn là thực hiện functional test:
-
-```text
-User A được read?
-User B được write?
-Unauthorized user bị deny?
+stat
 ```
 
 ---
 
-# Lab 13 — `umask`
+# Lab 13 — Permission Configuration
 
-Bạn sẽ:
+Bạn sẽ thực hành permission scenarios như:
 
-1. kiểm tra current `umask`;
-2. tạo file/directory;
-3. quan sát default permissions;
-4. thay đổi `umask` trong lab;
-5. tạo objects mới;
-6. so sánh kết quả.
+```text
+Owner được read/write
+Group chỉ read
+Other không có access
+```
 
-Mục tiêu là chứng minh bạn hiểu default permission creation.
+và biểu diễn thành:
+
+```text
+rw-r-----
+```
+
+sau đó áp dụng bằng `chmod`.
+
+Quan trọng hơn là kiểm thử bằng các account khác nhau để xác minh permission thật sự hoạt động.
 
 ---
 
-# Lab 14 — Least-Privilege `sudo`
-
-Đây là một trong các lab quan trọng nhất.
-
-Scenario điển hình:
-
-```text
-opsuser cần thực hiện một administrative task cụ thể
-nhưng không được cấp toàn quyền root.
-```
+# Lab 14 — umask Verification
 
 Bạn sẽ:
 
 ```text
-Create controlled user
-Identify required privileged operation
-Configure limited sudo
-Verify permitted command
-Verify prohibited command
-Collect evidence
+Check current umask
+→ create new file
+→ inspect permission
+→ create directory
+→ inspect permission
 ```
 
-Cần kiểm tra config bằng phương thức an toàn như `visudo`.
+để quan sát tác động của `umask`.
+
+Không chỉ học công thức trên lý thuyết.
 
 ---
 
-# Lab 15 — SSH Key Generation
+# Lab 15 — Least-Privilege sudo
 
-Bạn sẽ tạo key pair trong lab bằng:
+Đây là lab security quan trọng.
 
-```bash
-ssh-keygen
-```
-
-Sau đó xác định:
+Bạn sẽ thiết kế scenario:
 
 ```text
-private key
-public key
-fingerprint
+User A
+   |
+   | sudo?
+   v
+Specified administrative operation
 ```
 
-và bảo đảm private key không bị đưa vào evidence submission.
+Mục tiêu:
+
+- authorized operation → được phép;
+- unauthorized privileged operation → bị từ chối.
+
+Bạn phải thu evidence của **cả thành công và thất bại**.
+
+Đó là cách chứng minh least privilege thực sự có hiệu lực.
 
 ---
 
-# Lab 16 — SSH Public-Key Authentication
+# Lab 16 — SSH Key Generation
 
-Bạn sẽ cấu hình public key cho controlled account thông qua:
+Bạn sẽ tạo SSH key pair trong lab.
+
+Conceptual result:
+
+```text
+Private key
+Public key
+```
+
+Private key phải được giữ trên administrative workstation và không đưa vào evidence package.
+
+Bạn sẽ kiểm tra:
+
+- file location;
+- ownership;
+- permission;
+- public key content;
+- key fingerprint khi phù hợp.
+
+---
+
+# Lab 17 — SSH Public Key Configuration
+
+Bạn sẽ cấu hình public key cho controlled Linux user.
+
+Thông thường liên quan đến:
 
 ```text
 ~/.ssh/
-~/.ssh/authorized_keys
+authorized_keys
 ```
 
-Sau đó verify login.
+Bạn phải quan tâm đến:
 
-Data flow cần hiểu:
+- correct user;
+- correct ownership;
+- correct permissions;
+- correct public key.
 
-```text
-Administrative workstation
-        |
-        | SSH private key
-        v
-Linux/RHEL server
-        |
-        | public key validation
-        v
-Authorized account session
-```
+Sai một trong các yếu tố trên có thể làm SSH authentication fail.
 
 ---
 
-# Lab 17 — Authorized Access Verification
+# Lab 18 — SSH Access Verification
 
-Bạn phải chứng minh legitimate user:
+Bạn phải chứng minh:
 
 ```text
-can authenticate
+Authorized identity
+→ Access succeeds
 ```
 
-và sau login:
+và xác minh sau login:
 
 ```bash
 whoami
-hostname
 id
+hostname
 ```
 
-để xác nhận identity và target.
+Điểm này rất quan trọng vì:
+
+> “SSH connection succeeded” chưa đủ.
+
+Bạn còn phải chứng minh login vào đúng host bằng đúng identity.
 
 ---
 
-# Lab 18 — Denied Access Verification
+# Lab 19 — Denied Access Verification
 
-Một điểm rất quan trọng trong syllabus là không chỉ chứng minh “allowed works” mà còn phải chứng minh:
+Syllabus yêu cầu không chỉ test authorized access mà còn phải verify **denied access**. Infrastructure_Operations_14_Da…
 
-> **unauthorized access is denied.**
-
-Có thể kiểm thử controlled scenarios như:
+Ví dụ conceptual scenarios:
 
 ```text
-Wrong user
-User không nằm đúng group
-User thiếu filesystem permission
-User không có sudo permission
-SSH key không được authorize
+Unauthorized user
+→ denied
+
+Wrong SSH key
+→ denied
+
+Insufficient file permission
+→ denied
+
+Unauthorized sudo command
+→ denied
 ```
 
-Mỗi case phải có expected denial.
+Security control chỉ được chứng minh tốt khi kiểm thử cả:
+
+```text
+positive test
++
+negative test
+```
 
 ---
 
-# Lab 19 — Command Documentation
+# Lab 20 — Command Documentation
 
-Syllabus yêu cầu document các command đã thực hiện.
+Trong quá trình lab, bạn sẽ phải lưu lại các command đã thực hiện.
 
-Một command log tốt nên chứa:
+Nhưng command log phải đủ context.
+
+Ví dụ không nên chỉ lưu:
+
+```bash
+chmod 640 test.txt
+```
+
+Mà evidence tốt hơn phải bao gồm:
 
 ```text
 Timestamp
-Hostname
-Current user
+Host
+User
+Original state
 Command
-Purpose
-Expected result
-Actual result
+Result
 Verification
-Status
 ```
-
-Không được đưa:
-
-```text
-password
-private key
-token
-secret
-```
-
-vào evidence.
-
----
-
-# Lab 20 — System Inventory Submission
-
-Bạn phải tạo một inventory tối thiểu.
-
-Ví dụ:
-
-```text
-Hostname
-Linux distribution
-OS version
-Kernel
-Current user
-UID/GID
-CPU
-Memory
-Filesystem overview
-Lab IP
-SSH access status
-```
-
-Đây là một trong các deliverable chính của Day 1.
 
 ---
 
 # Lab 21 — Access Verification Evidence
 
-Evidence package phải chứng minh ít nhất:
+Một evidence package về access nên chứng minh được:
 
 ```text
-Approved account exists
-Correct group membership
-Correct ownership
-Correct permissions
-Approved sudo works
-Unapproved sudo is denied
-SSH key authentication works
-Unauthorized access is denied
+Who logged in?
+Which server?
+Which authentication method?
+What privilege?
+What was allowed?
+What was denied?
 ```
+
+Các command như:
+
+```bash
+whoami
+id
+groups
+sudo ...
+```
+
+có thể đóng vai trò verification tùy lab scenario.
 
 ---
 
 # Lab 22 — Configuration Evidence
 
-Cuối lab, bạn phải có bằng chứng cho các cấu hình đã thực hiện:
+Bạn sẽ thu thập evidence cho:
 
 ```text
-Users/groups
+Users
+Groups
 Ownership
 Permissions
-umask
 sudo
 SSH
-authorized_keys
-System inventory
 ```
 
-Kèm:
+Ví dụ:
 
-```text
-timestamp
-hostname
-command/output
+```bash
+id <user>
+getent group <group>
+ls -l <file>
+stat <file>
 ```
 
-đủ để người khác review.
+Với configuration chứa security-sensitive information, evidence phải tránh làm lộ:
+
+- password;
+- private key;
+- secret;
+- token.
 
 ---
 
-# Lab 23 — Cleanup / Rollback
+# Lab 23 — Final Day 1 Submission Package
 
-Một lab Infrastructure Operations không hoàn thành chỉ vì “test thành công”.
-
-Bạn còn phải:
-
-- remove temporary test data nếu được yêu cầu;
-- revoke temporary privileges;
-- remove temporary lab accounts nếu scope yêu cầu;
-- remove unused SSH authorization;
-- restore modified configuration;
-- verify final state;
-- preserve evidence.
-
-Tư duy cần hình thành:
+Theo syllabus, cuối Day 1 phải có ít nhất ba nhóm deliverable quan trọng:
 
 ```text
-Change
-→ Verify
-→ Test
-→ Evidence
-→ Cleanup / Rollback
-→ Final Verification
+System Inventory
++
+Access Verification
++
+Configuration Evidence
+```
+
+cùng documentation các command đã thực hiện. Infrastructure_Operations_14_Da…
+
+Có thể hình dung final evidence package:
+
+```text
+Day1_Evidence/
+│
+├── 01_System_Inventory
+│
+├── 02_CLI_Filesystem
+│
+├── 03_User_Group
+│
+├── 04_Ownership_Permissions
+│
+├── 05_Sudo
+│
+├── 06_SSH
+│
+├── 07_Access_Tests
+│
+└── 08_Command_Log
 ```
 
 ---
 
-# Lab 24 — Personal Learning Baseline
+# Failure Injection dự kiến trong Module Thực hành
 
-Một deliverable đặc biệt trong Day 1 là **personal learning baseline**. Infrastructure_Operations_14_Da…
-
-Mục đích là xác định trước khi bước vào chương trình bạn đang ở mức nào đối với:
+Khi học chi tiết, tôi sẽ đưa vào một số lỗi mô phỏng an toàn để bạn tự troubleshoot, ví dụ:
 
 ```text
-Linux CLI
+1. User không thuộc đúng group
+2. File permission sai
+3. File owner/group sai
+4. sudo operation bị denied
+5. SSH key authentication bị fail
+```
+
+Bạn sẽ không chỉ “sửa cho chạy”, mà phải thực hiện:
+
+```text
+Observe symptom
+→ collect evidence
+→ form hypothesis
+→ test
+→ identify root cause
+→ remediate safely
+→ verify
+→ record evidence
+```
+
+---
+
+# Boundary Day 1 → Day 2
+
+Một điểm rất quan trọng là **không nhầm phạm vi Day 1 và Day 2**.
+
+Day 1 kết thúc khi bạn đã có nền tảng:
+
+```text
+Infrastructure Operations mindset
+Operational safety
+Access management
+Linux architecture
+CLI
 Filesystem
 Users/groups
 Permissions
 sudo
 SSH
-Operational safety
-Troubleshooting
 Evidence collection
 ```
 
-Từ đó cuối chương trình có thể so sánh mức tiến bộ.
+Day 2 mới chuyển sang Linux/RHEL system administration sâu hơn:
+
+```text
+Package management
+Processes
+systemd
+SELinux
+firewalld
+Networking
+Storage
+Logs
+Bash
+cron
+Backup/restore
+Operational troubleshooting
+```
+
+Syllabus xác định Day 1–2 cùng thuộc module **Orientation & Linux Administration Foundations**, trong đó Day 1 tạo nền để Day 2 bắt đầu quản trị system services, networking, storage và troubleshooting. Infrastructure_Operations_14_Da…
 
 ---
 
-# Kết quả cần đạt sau Day 1
+# Mục tiêu hoàn thành Day 1
 
-Nếu hoàn thành đúng Day 1, bạn chưa cần trở thành Linux administrator nâng cao. Syllabus xác định toàn bộ chương trình là **accelerated foundation và operational readiness**, không phải advanced product mastery. Infrastructure_Operations_14_Da…
-
-Bạn cần đạt được 5 năng lực nền tảng:
-
-**1. Operational mindset**
-
-Biết rằng mọi thao tác phải nằm trong chuỗi:
+Sau khi hoàn thành đầy đủ **Module Lý thuyết + Module Thực hành**, bạn phải đạt được mức có thể tự giải thích và thực hiện được workflow:
 
 ```text
-Authorization
-→ Inspection
-→ Controlled action
-→ Verification
-→ Evidence
-→ Rollback/Escalation
+Understand operational scope
+        ↓
+Verify authorization
+        ↓
+Identify Linux system
+        ↓
+Navigate filesystem safely
+        ↓
+Manipulate files/directories
+        ↓
+Manage controlled users/groups
+        ↓
+Configure ownership/permissions
+        ↓
+Apply least privilege
+        ↓
+Use sudo appropriately
+        ↓
+Configure SSH key access
+        ↓
+Test allowed + denied access
+        ↓
+Verify configuration
+        ↓
+Collect audit evidence
+        ↓
+Rollback / Escalate when required
 ```
 
-**2. Linux CLI foundation**
+Đây cũng chính là triết lý của toàn bộ 14-day program: chương trình không chỉ yêu cầu biết technical commands mà hướng tới **operational readiness**, gồm hands-on lab, verification evidence và controlled troubleshooting. Infrastructure_Operations_14_Da…
 
-Tự tin với:
-
-```text
-filesystem
-paths
-files/directories
-pipes
-redirection
-history
-help
-searching
-basic text processing
-```
-
-**3. Linux identity & access**
-
-Hiểu và vận hành được:
-
-```text
-users
-groups
-ownership
-permissions
-chmod
-chown
-chgrp
-umask
-sudo
-```
-
-**4. Secure remote administration**
-
-Hiểu và thực hiện được:
-
-```text
-SSH
-key pair
-authorized_keys
-secure administrative access
-allowed/denied verification
-```
-
-**5. Enterprise evidence discipline**
-
-Có thể tạo:
-
-```text
-system inventory
-access evidence
-configuration evidence
-command history/log
-verification record
-```
-
-mà không làm lộ credential.
-
----
-
-# Cấu trúc chúng ta sẽ học chi tiết tiếp theo
-
-Tôi đề xuất giữ nguyên Day 1 thành đúng hai Module lớn như sau:
-
-```text
-DAY 1
-│
-├── MODULE 1 — LÝ THUYẾT
-│   ├── Infrastructure Operations roles
-│   ├── L1/L2 boundaries
-│   ├── Operational safety
-│   ├── Production vs non-production
-│   ├── Change authorization
-│   ├── Least privilege
-│   ├── SOP / Runbook / Escalation
-│   ├── Access management
-│   ├── Configuration baseline
-│   ├── Asset inventory
-│   ├── Audit evidence
-│   ├── Lab readiness
-│   ├── Linux architecture
-│   ├── Kernel / Shell / Distribution / RHEL
-│   ├── Filesystem hierarchy
-│   ├── CLI / Paths / File operations
-│   ├── Command syntax
-│   ├── Pipes / Redirection / History / Help
-│   ├── Safe command execution
-│   ├── Users / Groups
-│   ├── Ownership / Permissions
-│   ├── chmod / chown / chgrp / umask
-│   ├── sudo
-│   └── SSH / SSH keys / Secure access
-│
-└── MODULE 2 — THỰC HÀNH
-    ├── Workstation preparation
-    ├── Access checklist
-    ├── Linux/RHEL lab readiness
-    ├── Evidence repository
-    ├── Personal learning baseline
-    ├── CLI navigation
-    ├── Files/directories
-    ├── Copy / Move / Delete
-    ├── Searching
-    ├── Text processing
-    ├── Users/groups
-    ├── Ownership/permissions
-    ├── umask
-    ├── Least-privilege sudo
-    ├── SSH key generation
-    ├── authorized_keys
-    ├── Successful access verification
-    ├── Denied access verification
-    ├── Command documentation
-    ├── System inventory
-    ├── Access evidence
-    ├── Configuration evidence
-    └── Cleanup / Rollback
-```
-
-Toàn bộ các topic trong `Concept/Lecture` và `Assignment/Lab` của **Day 1 đều đã được ánh xạ vào hai Module trên**, không bỏ sót nội dung syllabus. Infrastructure_Operations_14_Da…
-
-Khi bạn nói **“Trình bày Module Lý thuyết”**, tôi sẽ bắt đầu Module 1 từ foundation và đi cực chi tiết từng topic, bao gồm **What, Why, How, workflow, security, common mistakes, verification, troubleshooting, evidence và escalation boundary**, kèm command/example nhưng chưa chuyển sang bài lab. Khi bạn nói **“Trình bày Module Thực hành”**, chúng ta sẽ triển khai toàn bộ Day 1 thành lab có **Objective → Environment → Safety → Steps → Commands → Expected Result → Verification → Failure Injection → Evidence → Troubleshooting → Cleanup/Rollback**.
+Khi bạn muốn đi tiếp, chỉ cần nói **“Trình bày chi tiết Module Lý thuyết Day 1”** hoặc **“Trình bày chi tiết Module Thực hành Day 1”**; tôi sẽ triển khai module đó từ foundation đến operational level, đầy đủ `What → Why → How → Workflow → Security → Verification → Troubleshooting → Evidence → Rollback → Escalation`.

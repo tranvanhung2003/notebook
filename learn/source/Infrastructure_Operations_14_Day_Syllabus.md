@@ -196,7 +196,6 @@
 - **AWS S3 and HYCU:** Successful backup execution alone does not establish disaster recovery readiness; isolated restoration, integrity checks, and observed recovery time are required.
 - High-risk activities, including production firewall changes, firmware upgrades, hyperconverged cluster maintenance, and privileged account operations, require authorization, rollback planning, and appropriate supervision.
 
-
 ---
 
 # Additive Coverage Review, Delivery Plan & Acceptance Controls
@@ -215,11 +214,11 @@ This revision adds detail to the existing syllabus; it does not replace, shorten
 
 **Planned contact time: 105 hours (14 × 7.5 hours), within the original 98–112-hour range.** Breaks are outside contact time. Original topics and the additions below are delivered together in the same exercises; the additions are not an extra 14-day course. Existing labs produce reusable artifacts for Days 10–14 rather than being rebuilt from scratch.
 
-| Days | Concept and instructor demonstration per day | Guided hands-on / fixture analysis per day | Evidence review and assessment per day | Daily total |
-| --- | ---: | ---: | ---: | ---: |
-| 1–13 | 2 h | 4.5 h | 1 h | 7.5 h |
-| 14 | 0.5 h | 6 h | 1 h | 7.5 h |
-| Program total | 26.5 h | 64.5 h | 14 h | 105 h |
+| Days          | Concept and instructor demonstration per day | Guided hands-on / fixture analysis per day | Evidence review and assessment per day | Daily total |
+| ------------- | -------------------------------------------: | -----------------------------------------: | -------------------------------------: | ----------: |
+| 1–13          |                                          2 h |                                      4.5 h |                                    1 h |       7.5 h |
+| 14            |                                        0.5 h |                                        6 h |                                    1 h |       7.5 h |
+| Program total |                                       26.5 h |                                     64.5 h |                                   14 h |       105 h |
 
 Before delivery, the instructor provisions the environment and validates access; these are setup responsibilities, not hidden learner training days. Provide RHEL and Windows VMs, an isolated AWS sandbox with budgets, Excel with approved VBA settings, Python, PowerShell, Batch, compatible classic Outlook and a test mailbox, and sanitized data. Provide authorized product labs for HPE/iLO, Nutanix/Prism/AHV, HYCU, Nexus, Catalyst, FortiGate, BIG-IP, both analyzers, ServiceNow, PalletControl and the named privileged-access products. Where these are unavailable, provide version-labelled exports, screenshots, configuration files and fault packets with expected answers, and record the resulting hands-on gap.
 
@@ -231,32 +230,32 @@ All learners submit an individual evidence set, even when sharing lab stations. 
 
 Day references include the original lecture/lab and the additive extension. Each deliverable is assessed with the day's acceptance check. All rows are revisited through the cumulative portfolio on Day 14; this does not imply every full lab is repeated that day.
 
-| # | Requested skill | Primary days | Required practical evidence |
-| --- | --- | --- | --- |
-| 1 | Audit evidence and log extraction from server/ServiceNow | 1–3, 10–11 | Bounded server exports, ServiceNow records/audit references, correlated timeline, extraction recipe and hash/count manifest |
-| 2 | Excel/VBA: ID reconciliation, password generation, TXT/CSV/encoding, evidence integrity | 12–13 | Multi-sheet reconciliation, disposable-password policy tests with masked evidence, encoding fixtures and original/derived hashes |
-| 3 | PalletControl | 11 | Product/version/runbook record, inventory freshness check, reconciliation and controlled correction evidence |
-| 4 | ServiceNow operations and maintenance | 11, 14 | Incident/request/change lifecycle, maintenance/backout plan, approvals, closure/handover and audit extraction |
-| 5 | Privileged-ID products: PS/Gateway, AWS Console IAM, AccessCheck | 4, 11, 13 | Separate product checklists: request/approval/access/expiry/revocation, denied-access test and audit references |
-| 6 | 90-day IAM review, vulnerability classification, multi-sheet automation, test/audit trail | 10, 12–13 | Cutoff rules, source reconciliation, decisions, vulnerability register, repeat-run/regression results and audit lineage |
-| 7 | AWS S3 for backup/DR | 5 | Version-specific isolated restore, verified content/counts, observed RPO/RTO and recovery dependency checklist |
-| 8 | RedHat Linux/RHEL | 1–2 | Users/permissions, packages/services, SELinux/network/storage checks, maintenance and log/backup recovery evidence |
-| 9 | Windows Server (All editions) | 3 | Release/edition coverage matrix, selected-edition operational lab, Core/GUI comparison, EVTX/PowerShell evidence |
-| 10 | Prism / Prism Central | 6–7 | Management-scope/RBAC comparison, inventory, alerts/tasks/audit exports and operational health checks |
-| 11 | AOS (Nutanix) | 6–7 | CVM/storage/resiliency checks, capacity findings and version-aware maintenance/precheck plan |
-| 12 | AHV hypervisor | 6–7 | VM configuration/networking, controlled operations and host-maintenance rehearsal with pre/postchecks |
-| 13 | HYCU backup | 7 | Protection policy/job evidence, failed-job diagnosis and isolated VM/file restore validation |
-| 14 | HPE ProLiant / iLO | 6 | Hardware/firmware inventory, IML/health evidence, maintenance stop conditions and escalation package |
-| 15 | Fortigate firewall | 9 | FortiGate CLI route/policy/session diagnosis, allow/deny tests and controlled configuration/rollback evidence |
-| 16 | BIG-IP load balancer | 9 | Virtual server/pool/monitor validation, TLS diagnosis and authenticated API/cURL assertion results |
-| 17 | Nexus L2/L3 switch | 8 | NX-OS-specific VLAN/trunk/L3 diagnosis, topology and configuration backup/difference evidence |
-| 18 | Catalyst L2/L3 switch | 8 | IOS/IOS XE-specific VLAN/trunk/L3 diagnosis, topology and configuration backup/difference evidence |
-| 19 | EventLog Analyzer | 10 | Known-event ingestion/reconciliation, silent-source diagnosis, query/report export and collector-health checks |
-| 20 | Firewall Analyzer | 10 | Traffic/rule/config-change analysis, ingestion/retention checks and verified security report export |
-| 21 | ServiceNow operations and maintenance (repeated in source list) | 11, 14 | Same full evidence and acceptance requirements as row 4 |
-| 22 | Nutanix product operations and maintenance | 6–7, 14 | Combined AOS/AHV/Prism runbook, health/capacity/backup checks and controlled maintenance/escalation rehearsal |
-| 23 | Internal-tool maintenance: read/modify/test VBA/Python/Batch; CSV/log/string/Regex | 12–13 | Three repaired tools with source diffs, fixtures, failure propagation, expected/actual tests and rollback versions |
-| 24 | BIG-IP API/cURL/SSL, FortiGate CLI, Outlook/MAPI, PowerShell, automation test | 3, 9, 12–14 | API/TLS negative tests, firewall CLI evidence, verified Outlook draft, PowerShell event export and regression report |
+| #   | Requested skill                                                                           | Primary days | Required practical evidence                                                                                                      |
+| --- | ----------------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Audit evidence and log extraction from server/ServiceNow                                  | 1–3, 10–11   | Bounded server exports, ServiceNow records/audit references, correlated timeline, extraction recipe and hash/count manifest      |
+| 2   | Excel/VBA: ID reconciliation, password generation, TXT/CSV/encoding, evidence integrity   | 12–13        | Multi-sheet reconciliation, disposable-password policy tests with masked evidence, encoding fixtures and original/derived hashes |
+| 3   | PalletControl                                                                             | 11           | Product/version/runbook record, inventory freshness check, reconciliation and controlled correction evidence                     |
+| 4   | ServiceNow operations and maintenance                                                     | 11, 14       | Incident/request/change lifecycle, maintenance/backout plan, approvals, closure/handover and audit extraction                    |
+| 5   | Privileged-ID products: PS/Gateway, AWS Console IAM, AccessCheck                          | 4, 11, 13    | Separate product checklists: request/approval/access/expiry/revocation, denied-access test and audit references                  |
+| 6   | 90-day IAM review, vulnerability classification, multi-sheet automation, test/audit trail | 10, 12–13    | Cutoff rules, source reconciliation, decisions, vulnerability register, repeat-run/regression results and audit lineage          |
+| 7   | AWS S3 for backup/DR                                                                      | 5            | Version-specific isolated restore, verified content/counts, observed RPO/RTO and recovery dependency checklist                   |
+| 8   | RedHat Linux/RHEL                                                                         | 1–2          | Users/permissions, packages/services, SELinux/network/storage checks, maintenance and log/backup recovery evidence               |
+| 9   | Windows Server (All editions)                                                             | 3            | Release/edition coverage matrix, selected-edition operational lab, Core/GUI comparison, EVTX/PowerShell evidence                 |
+| 10  | Prism / Prism Central                                                                     | 6–7          | Management-scope/RBAC comparison, inventory, alerts/tasks/audit exports and operational health checks                            |
+| 11  | AOS (Nutanix)                                                                             | 6–7          | CVM/storage/resiliency checks, capacity findings and version-aware maintenance/precheck plan                                     |
+| 12  | AHV hypervisor                                                                            | 6–7          | VM configuration/networking, controlled operations and host-maintenance rehearsal with pre/postchecks                            |
+| 13  | HYCU backup                                                                               | 7            | Protection policy/job evidence, failed-job diagnosis and isolated VM/file restore validation                                     |
+| 14  | HPE ProLiant / iLO                                                                        | 6            | Hardware/firmware inventory, IML/health evidence, maintenance stop conditions and escalation package                             |
+| 15  | Fortigate firewall                                                                        | 9            | FortiGate CLI route/policy/session diagnosis, allow/deny tests and controlled configuration/rollback evidence                    |
+| 16  | BIG-IP load balancer                                                                      | 9            | Virtual server/pool/monitor validation, TLS diagnosis and authenticated API/cURL assertion results                               |
+| 17  | Nexus L2/L3 switch                                                                        | 8            | NX-OS-specific VLAN/trunk/L3 diagnosis, topology and configuration backup/difference evidence                                    |
+| 18  | Catalyst L2/L3 switch                                                                     | 8            | IOS/IOS XE-specific VLAN/trunk/L3 diagnosis, topology and configuration backup/difference evidence                               |
+| 19  | EventLog Analyzer                                                                         | 10           | Known-event ingestion/reconciliation, silent-source diagnosis, query/report export and collector-health checks                   |
+| 20  | Firewall Analyzer                                                                         | 10           | Traffic/rule/config-change analysis, ingestion/retention checks and verified security report export                              |
+| 21  | ServiceNow operations and maintenance (repeated in source list)                           | 11, 14       | Same full evidence and acceptance requirements as row 4                                                                          |
+| 22  | Nutanix product operations and maintenance                                                | 6–7, 14      | Combined AOS/AHV/Prism runbook, health/capacity/backup checks and controlled maintenance/escalation rehearsal                    |
+| 23  | Internal-tool maintenance: read/modify/test VBA/Python/Batch; CSV/log/string/Regex        | 12–13        | Three repaired tools with source diffs, fixtures, failure propagation, expected/actual tests and rollback versions               |
+| 24  | BIG-IP API/cURL/SSL, FortiGate CLI, Outlook/MAPI, PowerShell, automation test             | 3, 9, 12–14  | API/TLS negative tests, firewall CLI evidence, verified Outlook draft, PowerShell event export and regression report             |
 
 ## D. Common evidence and automation acceptance contract
 
@@ -268,16 +267,16 @@ Preserve an untouched raw export and process a copy. Verify hashes after transfe
 
 ### D.2. Minimum automation test catalog
 
-| Test group | Required cases | Acceptance |
-| --- | --- | --- |
-| Identity matching | Leading zeros, long IDs, whitespace/case rules, duplicates, missing owners, cross-system ID collisions | No accidental numeric conversion or silent many-to-many join; deterministic exceptions match the answer key |
-| File/encoding | UTF-8 with/without BOM, UTF-16, supplied CP932 fixtures, quotes, delimiters, embedded newlines, CRLF/LF, malformed bytes | Explicit input/output contract; expected text survives round-trip; unmappable/malformed data is rejected or quarantined with a reason |
-| File/process failure | Missing/locked file, permission denied, empty input, missing header, path with spaces, child-script failure | Observable failure/exit status, useful sanitized log and no misleading success output |
-| IAM boundaries | Before/on/after review cutoff, new account, absent last-use evidence, service/break-glass account, stale approval | Policy-specific expected result and evidence gap recorded; no automatic revocation based only on missing data |
-| API/network/TLS | 401/403, timeout, server-error fixture, malformed JSON, invalid certificate, unhealthy member | Bounded execution, TLS verification retained, explicit failed assertion and sanitized diagnostics |
-| Password generation | Policy length/character requirements, invalid policy, secure random provider failure, secret leakage check | Approved secure generator and fail-closed handling; no plaintext secrets in workbook/report/log; uniqueness sampling is not proof of cryptographic security |
-| Outlook/report | Missing folder/attachment, duplicate filename, disallowed attachment path/type, unavailable profile | Controlled test mailbox, safe attachment handling, draft/attachment checks and no automatic send |
-| Repeatability/regression | Same inputs twice, unchanged reference cases, modified input, partial prior output | Stable business results, no duplicate side effects, preserved inputs/reviewer decisions and traceable new run ID |
+| Test group               | Required cases                                                                                                           | Acceptance                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity matching        | Leading zeros, long IDs, whitespace/case rules, duplicates, missing owners, cross-system ID collisions                   | No accidental numeric conversion or silent many-to-many join; deterministic exceptions match the answer key                                                 |
+| File/encoding            | UTF-8 with/without BOM, UTF-16, supplied CP932 fixtures, quotes, delimiters, embedded newlines, CRLF/LF, malformed bytes | Explicit input/output contract; expected text survives round-trip; unmappable/malformed data is rejected or quarantined with a reason                       |
+| File/process failure     | Missing/locked file, permission denied, empty input, missing header, path with spaces, child-script failure              | Observable failure/exit status, useful sanitized log and no misleading success output                                                                       |
+| IAM boundaries           | Before/on/after review cutoff, new account, absent last-use evidence, service/break-glass account, stale approval        | Policy-specific expected result and evidence gap recorded; no automatic revocation based only on missing data                                               |
+| API/network/TLS          | 401/403, timeout, server-error fixture, malformed JSON, invalid certificate, unhealthy member                            | Bounded execution, TLS verification retained, explicit failed assertion and sanitized diagnostics                                                           |
+| Password generation      | Policy length/character requirements, invalid policy, secure random provider failure, secret leakage check               | Approved secure generator and fail-closed handling; no plaintext secrets in workbook/report/log; uniqueness sampling is not proof of cryptographic security |
+| Outlook/report           | Missing folder/attachment, duplicate filename, disallowed attachment path/type, unavailable profile                      | Controlled test mailbox, safe attachment handling, draft/attachment checks and no automatic send                                                            |
+| Repeatability/regression | Same inputs twice, unchanged reference cases, modified input, partial prior output                                       | Stable business results, no duplicate side effects, preserved inputs/reviewer decisions and traceable new run ID                                            |
 
 Tests use a trusted expected-output dataset or independently reviewed assertions, not just comparison of a program against itself. Record case ID, requirement, fixture version, expected result, actual result, pass/fail, defect/ticket and retest status. A failed case cannot be relabelled passed because the script completed. Mask secrets in error paths as well as successful paths.
 
